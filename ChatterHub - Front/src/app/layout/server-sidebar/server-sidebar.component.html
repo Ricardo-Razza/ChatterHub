@@ -1,0 +1,34 @@
+<aside class="flex h-full w-[68px] flex-col items-center gap-2 overflow-y-auto bg-ch-bg-darker py-3 border-r border-ch-border">
+
+  <!-- Ícone Home -->
+  <button type="button"
+    class="mb-1 flex h-12 w-12 items-center justify-center rounded-xl bg-ch-brand
+           text-white shadow-brand-glow transition-all duration-200 hover:scale-105 hover:bg-ch-brand-hover"
+    aria-label="Mensagens diretas">
+    <lucide-icon name="message-square" [size]="22"></lucide-icon>
+  </button>
+
+  <div class="my-1 h-[2px] w-8 rounded-full bg-ch-border"></div>
+
+  <!-- Lista de servidores -->
+  <ng-container *ngFor="let server of serverService.servers()">
+    <app-server-icon
+      [server]="server"
+      [active]="server.id === serverService.activeServerId()"
+      (selected)="selectServer($event)"
+    />
+  </ng-container>
+
+  <!-- Botão adicionar servidor (APENAS ADMIN E MODERATOR) -->
+  <button *ngIf="canCreateServer()"
+    type="button" (click)="addServer()"
+    class="mt-1 flex h-12 w-12 items-center justify-center rounded-xl bg-ch-bg-light
+           text-ch-accent transition-all duration-200 hover:scale-105 hover:bg-ch-accent hover:text-ch-bg-deep"
+    title="Adicionar servidor (Admin/Mod)">
+    <lucide-icon name="plus" [size]="22"></lucide-icon>
+  </button>
+
+</aside>
+
+<!-- Modal -->
+<app-create-server-modal />

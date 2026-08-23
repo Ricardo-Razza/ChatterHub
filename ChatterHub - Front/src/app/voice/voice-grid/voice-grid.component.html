@@ -1,0 +1,44 @@
+<div class="flex h-full w-full gap-3 p-4">
+
+  <!-- LAYOUT COM COMPARTILHAMENTO DE TELA: vídeo em destaque (~80%) + grade lateral -->
+  <ng-container *ngIf="featuredUser(); else normalGrid">
+    <div class="flex h-full w-full flex-col gap-3 md:flex-row">
+
+      <!-- Tela compartilhada em destaque com stream de vídeo real -->
+      <div class="flex h-[65%] w-full md:h-full md:w-[80%]">
+        <div class="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl
+                    bg-black ring-2 ring-ch-brand shadow-brand-glow">
+          <video
+            #screenVideo
+            autoplay
+            playsinline
+            class="h-full w-full object-contain"
+          ></video>
+          <span class="absolute left-3 top-3 rounded bg-black/60 px-2 py-1 text-xs font-medium text-white flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full bg-ch-danger animate-pulse"></span>
+            Ao vivo ({{ featuredUser()?.username }})
+          </span>
+        </div>
+      </div>
+
+      <!-- Grade lateral com os participantes -->
+      <div class="grid h-[35%] w-full grid-cols-3 gap-2 overflow-y-auto md:h-full md:w-[20%] md:grid-cols-1">
+        <app-user-card *ngFor="let user of otherParticipants()" [user]="user" />
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- LAYOUT NORMAL: grade de participantes -->
+  <ng-template #normalGrid>
+    <div
+      class="grid h-full w-full auto-rows-fr gap-3"
+      [ngClass]="{
+        'grid-cols-1 max-w-xl mx-auto': voiceService.participants().length === 1,
+        'grid-cols-2': voiceService.participants().length === 2,
+        'grid-cols-2 md:grid-cols-3': voiceService.participants().length > 2
+      }"
+    >
+      <app-user-card *ngFor="let user of voiceService.participants()" [user]="user" />
+    </div>
+  </ng-template>
+</div>

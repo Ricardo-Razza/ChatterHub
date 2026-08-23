@@ -1,0 +1,14 @@
+<!-- Tela de Login & Cadastro com Verificação de E-mail (quando não autenticado) -->
+<app-login *ngIf="!userService.isLoggedIn()" />
+
+<!-- App Principal do ChatterHub (quando autenticado) -->
+<div *ngIf="userService.isLoggedIn()"
+     class="h-screen w-screen overflow-hidden bg-ch-bg-deep text-ch-text-primary antialiased">
+  <div class="grid h-full grid-cols-[68px_260px_1fr] max-md:grid-cols-[68px_1fr] max-sm:grid-cols-[1fr]">
+    <app-server-sidebar class="h-full max-sm:hidden" />
+    <app-channel-sidebar class="h-full max-md:hidden" />
+    <main class="h-full min-w-0">
+      <app-main-area />
+    </main>
+  </div>
+</div>

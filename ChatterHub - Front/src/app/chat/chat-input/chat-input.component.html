@@ -1,0 +1,45 @@
+<div class="shrink-0 px-4 pb-6">
+  <div class="flex items-center gap-3 rounded-xl bg-ch-bg-light px-4 py-2.5 shadow-sm border border-ch-border/50">
+
+    <!-- Ícone de anexo à esquerda -->
+    <button
+      type="button"
+      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ch-text-muted/80
+             text-ch-bg-light transition-colors hover:bg-ch-text-primary"
+      aria-label="Anexar arquivo"
+    >
+      <lucide-icon name="plus-circle" [size]="16"></lucide-icon>
+    </button>
+
+    <!-- Campo de texto -->
+    <input
+      type="text"
+      [(ngModel)]="draft"
+      (keydown)="onKeydown($event)"
+      [placeholder]="'Conversar em #' + channelName"
+      class="flex-1 bg-transparent text-[15px] text-ch-text-primary placeholder:text-ch-text-muted
+             outline-none"
+    />
+
+    <!-- Ícones à direita -->
+    <div class="flex shrink-0 items-center gap-3 text-ch-text-muted">
+      <button type="button" class="transition-colors hover:text-ch-text-primary" aria-label="Enviar presente">
+        <lucide-icon name="gift" [size]="20"></lucide-icon>
+      </button>
+      <button type="button" class="transition-colors hover:text-ch-text-primary" aria-label="Anexar arquivo">
+        <lucide-icon name="paperclip" [size]="20"></lucide-icon>
+      </button>
+      <button type="button" class="transition-colors hover:text-ch-text-primary" aria-label="Inserir emoji">
+        <lucide-icon name="smile" [size]="20"></lucide-icon>
+      </button>
+      <button
+        type="button"
+        (click)="submit()"
+        class="text-ch-brand transition-colors hover:text-ch-brand-light"
+        aria-label="Enviar mensagem"
+      >
+        <lucide-icon name="send" [size]="20"></lucide-icon>
+      </button>
+    </div>
+  </div>
+</div>

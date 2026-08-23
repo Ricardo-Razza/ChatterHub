@@ -1,0 +1,30 @@
+<div
+  class="group flex gap-4 rounded-lg px-4 py-0.5 hover:bg-ch-bg-light/50 transition-colors"
+  [ngClass]="grouped ? 'mt-0' : 'mt-[17px]'"
+>
+  <!-- Coluna do avatar (ou espaço reservado quando agrupado) -->
+  <div class="w-10 shrink-0 pt-0.5">
+    <img
+      *ngIf="!grouped"
+      [src]="avatarUrl"
+      [alt]="authorName"
+      class="h-10 w-10 rounded-full"
+    />
+    <span
+      *ngIf="grouped"
+      class="hidden w-10 select-none text-[10px] text-ch-text-muted group-hover:inline-block"
+    >
+      {{ formattedTime }}
+    </span>
+  </div>
+
+  <div class="min-w-0 flex-1">
+    <div *ngIf="!grouped" class="flex items-baseline gap-2">
+      <span class="text-[15px] font-semibold text-ch-text-primary hover:underline cursor-pointer">{{ authorName }}</span>
+      <span class="text-xs text-ch-text-muted">{{ formattedTime }}</span>
+    </div>
+    <p class="whitespace-pre-wrap break-words text-[15px] leading-[1.375rem] text-ch-text-primary">
+      {{ content }}
+    </p>
+  </div>
+</div>

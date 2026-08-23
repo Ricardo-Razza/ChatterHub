@@ -1,0 +1,73 @@
+<div class="flex h-full min-w-0 flex-col bg-ch-bg-deep">
+
+  <!-- Header -->
+  <header class="flex h-14 shrink-0 items-center gap-2 border-b border-ch-border px-4 shadow-sm">
+    <lucide-icon name="volume-2" [size]="20" class="text-ch-text-muted"></lucide-icon>
+    <h1 class="font-semibold text-ch-text-primary">{{ channelService.activeChannel()?.name }}</h1>
+    <span class="ml-2 rounded-full bg-ch-bg-light px-2 py-0.5 text-xs text-ch-text-muted">
+      {{ voiceService.participants().length }} conectado(s)
+    </span>
+  </header>
+
+  <!-- Grid de participantes -->
+  <div class="flex-1 overflow-hidden">
+    <app-voice-grid />
+  </div>
+
+  <!-- Barra de controles da chamada -->
+  <div class="flex shrink-0 items-center justify-center gap-3 border-t border-ch-border bg-ch-bg-dark px-4 py-4">
+
+    <button
+      type="button"
+      (click)="toggleMute()"
+      class="flex h-11 w-11 items-center justify-center rounded-full transition-colors"
+      [ngClass]="
+        userService.currentUser().isMuted
+          ? 'bg-ch-danger text-white'
+          : 'bg-ch-bg-light text-ch-text-primary hover:bg-ch-bg-lighter'
+      "
+      aria-label="Ativar/desativar microfone"
+    >
+      <lucide-icon [name]="userService.currentUser().isMuted ? 'mic-off' : 'mic'" [size]="20"></lucide-icon>
+    </button>
+
+    <button
+      type="button"
+      (click)="toggleCamera()"
+      class="flex h-11 w-11 items-center justify-center rounded-full transition-colors"
+      [ngClass]="
+        userService.currentUser().isCameraOn
+          ? 'bg-ch-bg-light text-ch-text-primary hover:bg-ch-bg-lighter'
+          : 'bg-ch-bg-light text-ch-text-muted hover:bg-ch-bg-lighter'
+      "
+      aria-label="Ativar/desativar câmera"
+    >
+      <lucide-icon [name]="userService.currentUser().isCameraOn ? 'video' : 'video-off'" [size]="20"></lucide-icon>
+    </button>
+
+    <!-- Botão Compartilhar Tela -->
+    <button
+      type="button"
+      (click)="toggleScreenShare()"
+      class="flex h-11 items-center gap-2 rounded-full px-5 font-medium transition-colors"
+      [ngClass]="
+        voiceService.isSharingScreen()
+          ? 'bg-ch-brand text-white hover:bg-ch-brand-hover'
+          : 'bg-ch-bg-light text-ch-text-primary hover:bg-ch-bg-lighter'
+      "
+      aria-label="Compartilhar tela"
+    >
+      <lucide-icon name="screen-share" [size]="20"></lucide-icon>
+      <span class="hidden sm:inline">{{ voiceService.isSharingScreen() ? 'Parar' : 'Compartilhar Tela' }}</span>
+    </button>
+
+    <button
+      type="button"
+      (click)="leaveCall()"
+      class="flex h-11 w-11 items-center justify-center rounded-full bg-ch-danger text-white transition-colors hover:brightness-110"
+      aria-label="Sair da chamada"
+    >
+      <lucide-icon name="phone-off" [size]="20"></lucide-icon>
+    </button>
+  </div>
+</div>

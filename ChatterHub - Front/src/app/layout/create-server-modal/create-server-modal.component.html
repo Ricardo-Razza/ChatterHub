@@ -1,0 +1,25 @@
+<div *ngIf="visible()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+     (click)="onBackdropClick($event)">
+  <div class="w-full max-w-sm rounded-xl bg-ch-bg-dark p-6 shadow-2xl border border-ch-border" (click)="$event.stopPropagation()">
+    <h2 class="mb-1 text-xl font-bold text-ch-text-primary">Criar Servidor</h2>
+    <p class="mb-5 text-sm text-ch-text-muted">Dê um nome e comece sua comunidade!</p>
+
+    <form (ngSubmit)="submit()">
+      <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ch-text-muted">Nome do Servidor</label>
+      <input type="text" [(ngModel)]="name" name="serverName" required maxlength="60"
+        placeholder="Ex: Meu Servidor"
+        class="mb-4 w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none ring-1 ring-ch-border focus:ring-ch-brand transition-all" />
+
+      <div class="flex gap-2 justify-end">
+        <button type="button" (click)="close()"
+          class="rounded-md px-4 py-2 text-sm font-semibold text-ch-text-muted hover:text-ch-text-primary transition-colors">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="!name.trim()"
+          class="rounded-md bg-ch-brand px-5 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40 transition-all">
+          Criar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

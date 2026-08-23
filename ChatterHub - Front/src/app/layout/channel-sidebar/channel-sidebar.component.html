@@ -1,0 +1,93 @@
+<aside class="flex h-full w-[260px] flex-col bg-ch-bg-dark border-r border-ch-border">
+
+  <!-- Cabeçalho com nome do servidor -->
+  <div class="flex h-14 shrink-0 items-center justify-between border-b border-ch-border px-4 font-semibold text-ch-text-primary shadow-sm">
+    <span class="truncate">{{ serverService.activeServer()?.name ?? "Nenhum servidor" }}</span>
+  </div>
+
+  <!-- Estado vazio: sem servidor -->
+  <div *ngIf="!serverService.activeServerId()" class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+    <lucide-icon name="hash" [size]="40" class="text-ch-text-muted opacity-30"></lucide-icon>
+    <p class="text-sm text-ch-text-muted">Selecione ou crie um servidor na barra lateral esquerda.</p>
+  </div>
+
+  <!-- Lista de canais -->
+  <div *ngIf="serverService.activeServerId()" class="flex-1 overflow-y-auto px-2 py-3">
+
+    <!-- Canais de Texto -->
+    <div class="mb-2">
+      <div class="flex items-center justify-between px-1 py-1.5">
+        <button type="button" (click)="toggleText()"
+          class="flex flex-1 items-center gap-1 text-xs font-semibold uppercase tracking-wide text-ch-text-muted hover:text-ch-text-primary transition-colors">
+          <lucide-icon name="chevron-down" [size]="12" class="transition-transform duration-150"
+            [class.-rotate-90]="textCollapsed()"></lucide-icon>
+          <span>Canais de Texto</span>
+        </button>
+        <button type="button" (click)="addTextChannel()"
+          class="flex h-5 w-5 items-center justify-center rounded text-ch-text-muted hover:text-ch-accent transition-colors"
+          title="Criar canal de texto">
+          <lucide-icon name="plus" [size]="14"></lucide-icon>
+        </button>
+      </div>
+
+      <ul *ngIf="!textCollapsed()" class="mt-0.5 flex flex-col gap-0.5">
+        <li *ngFor="let channel of channelService.textChannels()">
+          <button type="button" (click)="selectText(channel.id)"
+            class="group flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-200"
+            [ngClass]="
+              channel.id === channelService.activeChannelId() && channelService.mainAreaMode() === 'text'
+                ? 'bg-ch-brand text-white shadow-brand-glow'
+                : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'
+            ">
+            <lucide-icon name="hash" [size]="18" class="shrink-0 opacity-70"></lucide-icon>
+            <span class="truncate">{{ channel.name }}</span>
+          </button>
+        </li>
+        <li *ngIf="channelService.textChannels().length === 0">
+          <p class="px-2 py-1 text-xs text-ch-text-muted italic">Nenhum canal de texto</p>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Canais de Voz -->
+    <div>
+      <div class="flex items-center justify-between px-1 py-1.5">
+        <button type="button" (click)="toggleVoice()"
+          class="flex flex-1 items-center gap-1 text-xs font-semibold uppercase tracking-wide text-ch-text-muted hover:text-ch-text-primary transition-colors">
+          <lucide-icon name="chevron-down" [size]="12" class="transition-transform duration-150"
+            [class.-rotate-90]="voiceCollapsed()"></lucide-icon>
+          <span>Canais de Voz</span>
+        </button>
+        <button type="button" (click)="addVoiceChannel()"
+          class="flex h-5 w-5 items-center justify-center rounded text-ch-text-muted hover:text-ch-accent transition-colors"
+          title="Criar canal de voz">
+          <lucide-icon name="plus" [size]="14"></lucide-icon>
+        </button>
+      </div>
+
+      <ul *ngIf="!voiceCollapsed()" class="mt-0.5 flex flex-col gap-0.5">
+        <li *ngFor="let channel of channelService.voiceChannels()">
+          <button type="button" (click)="joinVoice(channel.id)"
+            class="group flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-200"
+            [ngClass]="
+              channel.id === channelService.activeChannelId() && channelService.mainAreaMode() === 'voice'
+                ? 'bg-ch-brand text-white shadow-brand-glow'
+                : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'
+            ">
+            <lucide-icon name="volume-2" [size]="18" class="shrink-0 opacity-70"></lucide-icon>
+            <span class="truncate">{{ channel.name }}</span>
+          </button>
+        </li>
+        <li *ngIf="channelService.voiceChannels().length === 0">
+          <p class="px-2 py-1 text-xs text-ch-text-muted italic">Nenhum canal de voz</p>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Controles do usuário -->
+  <app-user-controls />
+</aside>
+
+<!-- Modal criar canal -->
+<app-create-channel-modal />

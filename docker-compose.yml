@@ -1,0 +1,54 @@
+services:
+  chatterhub-mysql:
+    image: mysql:8.0
+    container_name: chatterhub-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: chatterhub
+      MYSQL_ROOT_PASSWORD: root_password_segura
+      MYSQL_USER: chatterhub_user
+      MYSQL_PASSWORD: chatterhub_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  chatterhub-api:
+    build:
+      context: "./ChatterHub - API"
+      dockerfile: Dockerfile
+    container_name: chatterhub-api
+    restart: always
+    depends_on:
+      chatterhub-mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: chatterhub-mysql
+      DB_PORT: 3306
+      DB_NAME: chatterhub
+      DB_USER: chatterhub_user
+      DB_PASSWORD: chatterhub_password
+      PORT: 8080
+    ports:
+      - "8080:8080"
+
+  chatterhub-front:
+    build:
+      context: "./ChatterHub - Front"
+      dockerfile: Dockerfile
+    container_name: chatterhub-front
+    restart: always
+    depends_on:
+      - chatterhub-api
+    ports:
+      - "3000:80"
+
+volumes:
+  mysql_data:

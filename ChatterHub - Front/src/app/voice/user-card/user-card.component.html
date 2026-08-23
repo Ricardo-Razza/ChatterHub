@@ -1,0 +1,43 @@
+<div
+  class="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl
+         bg-ch-bg-dark ring-2 transition-all duration-150"
+  [ngClass]="user.isSpeaking ? 'ring-ch-success shadow-speaking' : 'ring-transparent'"
+>
+  <!-- Câmera ligada: placeholder de vídeo -->
+  <div
+    *ngIf="user.isCameraOn; else avatarView"
+    class="flex h-full w-full items-center justify-center bg-gradient-to-br from-ch-bg-lighter to-ch-bg-dark"
+  >
+    <lucide-icon name="video" [size]="32" class="text-ch-text-muted"></lucide-icon>
+    <span class="absolute bottom-2 left-2 rounded bg-black/50 px-1.5 py-0.5 text-[11px] text-white">Câmera</span>
+  </div>
+
+  <!-- Câmera desligada: avatar centralizado -->
+  <ng-template #avatarView>
+    <img
+      [src]="user.avatarUrl"
+      [alt]="user.username"
+      class="rounded-full object-cover"
+      [ngClass]="featured ? 'h-32 w-32' : 'h-16 w-16'"
+    />
+  </ng-template>
+
+  <!-- Rodapé com nome e ícones de status -->
+  <div class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-2.5 py-1.5">
+    <span class="truncate text-sm font-medium text-white">{{ user.username }}</span>
+    <div class="flex shrink-0 items-center gap-1.5">
+      <lucide-icon
+        *ngIf="user.isSharingScreen"
+        name="screen-share"
+        [size]="14"
+        class="text-ch-brand-light"
+      ></lucide-icon>
+      <lucide-icon
+        *ngIf="user.isMuted"
+        name="mic-off"
+        [size]="14"
+        class="text-ch-danger"
+      ></lucide-icon>
+    </div>
+  </div>
+</div>

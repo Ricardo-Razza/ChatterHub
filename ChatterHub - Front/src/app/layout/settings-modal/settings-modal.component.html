@@ -1,0 +1,422 @@
+<div *ngIf="visible()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn"
+     (click)="onBackdropClick($event)">
+  <div class="flex h-[88vh] w-[95vw] max-w-5xl overflow-hidden rounded-2xl bg-ch-bg-medium shadow-2xl border border-ch-border"
+       (click)="$event.stopPropagation()">
+
+    <!-- BARRA LATERAL ESTILO DISCORD -->
+    <aside class="flex w-64 flex-col bg-ch-bg-darker p-4 overflow-y-auto select-none border-r border-ch-border">
+      
+      <!-- Cabeçalho do usuário no topo da sidebar -->
+      <div class="flex items-center gap-3 px-2 py-2 mb-4 rounded-xl bg-ch-bg-light border border-ch-border cursor-pointer"
+           (click)="activeTab = 'account'">
+        <img [src]="userService.currentUser().avatarUrl" class="h-10 w-10 rounded-full border-2 border-ch-brand shadow" />
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="truncate text-sm font-bold text-ch-text-primary">{{ userService.currentUser().username }}</span>
+            <span *ngIf="userService.isAdmin()" class="rounded bg-ch-brand px-1 py-0.2 text-[9px] font-extrabold text-ch-text-primary">ADM</span>
+          </div>
+          <p class="text-[11px] text-ch-text-muted">Editar conta ✏️</p>
+        </div>
+      </div>
+
+      <!-- Barra de busca nas configurações -->
+      <div class="relative mb-3">
+        <lucide-icon name="search" [size]="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ch-text-muted"></lucide-icon>
+        <input type="text" placeholder="Buscar"
+          class="w-full rounded-md bg-ch-bg-medium py-1.5 pl-8 pr-3 text-xs text-ch-text-primary placeholder:text-ch-text-muted outline-none border border-ch-border focus:border-ch-brand" />
+      </div>
+
+      <!-- SEÇÃO: CONFIGURAÇÕES DE USUÁRIO -->
+      <div class="mb-4">
+        <h3 class="mb-1.5 px-2 text-[11px] font-bold uppercase tracking-wider text-ch-text-muted">Configurações de Usuário</h3>
+        <ul class="flex flex-col gap-0.5">
+          <li>
+            <button type="button" (click)="activeTab = 'account'"
+              class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+              [ngClass]="activeTab === 'account' ? 'bg-ch-bg-lighter text-ch-text-primary' : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'">
+              <lucide-icon name="users" [size]="16"></lucide-icon> Minha Conta
+            </button>
+          </li>
+          <li>
+            <button type="button" (click)="activeTab = 'security'"
+              class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+              [ngClass]="activeTab === 'security' ? 'bg-ch-bg-lighter text-ch-text-primary' : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'">
+              <lucide-icon name="shield" [size]="16"></lucide-icon> Senha e Segurança
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- SEÇÃO: EXPERIÊNCIA / VOZ E VÍDEO -->
+      <div class="mb-4">
+        <h3 class="mb-1.5 px-2 text-[11px] font-bold uppercase tracking-wider text-ch-text-muted">Experiência</h3>
+        <ul class="flex flex-col gap-0.5">
+          <li>
+            <button type="button" (click)="activeTab = 'voice'"
+              class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+              [ngClass]="activeTab === 'voice' ? 'bg-ch-bg-lighter text-ch-text-primary' : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'">
+              <lucide-icon name="mic" [size]="16"></lucide-icon> Voz e Vídeo
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- SEÇÃO: ADMINISTRAÇÃO (APENAS ADMIN) -->
+      <div *ngIf="userService.isAdmin()" class="mb-4">
+        <h3 class="mb-1.5 px-2 text-[11px] font-bold uppercase tracking-wider text-ch-brand-light">Administração</h3>
+        <ul class="flex flex-col gap-0.5">
+          <li>
+            <button type="button" (click)="activeTab = 'admin'"
+              class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors"
+              [ngClass]="activeTab === 'admin' ? 'bg-ch-brand text-ch-text-primary shadow-brand-glow' : 'text-ch-brand-light hover:bg-ch-bg-light hover:text-ch-text-primary'">
+              <lucide-icon name="shield" [size]="16"></lucide-icon> Painel Admin & Permissões
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- BOTÃO SAIR DA CONTA -->
+      <div class="mt-auto pt-4 border-t border-ch-border">
+        <button type="button" (click)="logout()"
+          class="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold text-ch-danger hover:bg-ch-danger/10 transition-colors">
+          <lucide-icon name="phone-off" [size]="16"></lucide-icon> Sair da Conta (Logout)
+        </button>
+      </div>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL DAS CONFIGURAÇÕES -->
+    <main class="flex flex-1 flex-col overflow-y-auto bg-ch-bg-medium p-8">
+      
+      <!-- Topo com botão de fechar -->
+      <div class="flex items-center justify-between border-b border-ch-border pb-4 mb-6">
+        <h1 class="text-xl font-bold text-ch-text-primary uppercase tracking-wide">
+          {{ getTabTitle() }}
+        </h1>
+        <button type="button" (click)="close()"
+          class="flex h-9 w-9 items-center justify-center rounded-full text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary transition-colors"
+          title="Fechar">
+          <lucide-icon name="x" [size]="20"></lucide-icon>
+        </button>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- ABA: MINHA CONTA COM DADOS 100% REAIS E EDITÁVEIS -->
+      <!-- ============================================== -->
+      <div *ngIf="activeTab === 'account'" class="flex flex-col gap-6 max-w-2xl animate-fadeIn">
+        
+        <!-- Cartão de Perfil estilo Banner ChatterHub -->
+        <div class="overflow-hidden rounded-xl bg-ch-bg-mediumer border border-ch-border shadow">
+          <div class="h-20 bg-gradient-to-r from-ch-brand to-purple-800"></div>
+          <div class="flex items-end justify-between px-6 pb-6 pt-0 -mt-8">
+            <div class="flex items-end gap-4">
+              <div class="relative">
+                <img [src]="userService.currentUser().avatarUrl" class="h-20 w-20 rounded-full border-4 border-ch-bg-mediumer shadow-md" />
+                <span class="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-ch-bg-mediumer"
+                  [ngClass]="{
+                    'bg-ch-success': userService.currentUser().status === 'online',
+                    'bg-ch-warning': userService.currentUser().status === 'idle',
+                    'bg-ch-danger': userService.currentUser().status === 'dnd',
+                    'bg-gray-500': userService.currentUser().status === 'offline'
+                  }"></span>
+              </div>
+              <div class="mb-1">
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg font-bold text-ch-text-primary">{{ userService.currentUser().username }}</h2>
+                  <span *ngIf="userService.currentUser().emailVerified" class="rounded bg-ch-success/20 px-2 py-0.5 text-[10px] font-bold text-ch-success">Verificado ✔</span>
+                </div>
+                <p class="text-xs text-ch-text-muted">ID: {{ userService.currentUser().id }}</p>
+              </div>
+            </div>
+            <button type="button" (click)="openEditModal('all')"
+              class="rounded-md bg-ch-brand px-4 py-1.5 text-xs font-bold text-ch-text-primary hover:brightness-110 shadow transition-all">
+              Editar Perfil
+            </button>
+          </div>
+        </div>
+
+        <!-- Bloco: Informações da Conta -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Informações da Conta</h3>
+          <div class="rounded-xl bg-ch-bg-mediumer p-4 border border-ch-border flex flex-col gap-3 divide-y divide-white/5">
+            
+            <div class="flex items-center justify-between pt-1">
+              <div>
+                <span class="block text-xs font-semibold text-ch-text-muted uppercase">Nome de usuário</span>
+                <span class="text-sm font-medium text-ch-text-primary">{{ userService.currentUser().username }}</span>
+              </div>
+              <button type="button" (click)="openEditModal('username')"
+                class="rounded bg-ch-bg-lighter px-3 py-1.5 text-xs font-semibold text-ch-text-primary hover:bg-ch-bg-light transition-colors">
+                Editar
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between pt-3">
+              <div>
+                <span class="block text-xs font-semibold text-ch-text-muted uppercase">E-mail</span>
+                <span class="text-sm font-medium text-ch-text-primary">{{ showEmail ? userService.currentUser().email : maskEmail(userService.currentUser().email) }}</span>
+                <button type="button" (click)="showEmail = !showEmail" class="ml-2 text-xs text-ch-brand-light hover:underline font-medium">
+                  {{ showEmail ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+              <button type="button" (click)="openEditModal('email')"
+                class="rounded bg-ch-bg-lighter px-3 py-1.5 text-xs font-semibold text-ch-text-primary hover:bg-ch-bg-light transition-colors">
+                Editar
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between pt-3">
+              <div>
+                <span class="block text-xs font-semibold text-ch-text-muted uppercase">Telefone</span>
+                <span class="text-sm font-medium text-ch-text-primary">{{ userService.currentUser().phone ? (showPhone ? userService.currentUser().phone : maskPhone(userService.currentUser().phone)) : 'Não informado' }}</span>
+                <button *ngIf="userService.currentUser().phone" type="button" (click)="showPhone = !showPhone" class="ml-2 text-xs text-ch-brand-light hover:underline font-medium">
+                  {{ showPhone ? 'Ocultar' : 'Mostrar' }}
+                </button>
+              </div>
+              <button type="button" (click)="openEditModal('phone')"
+                class="rounded bg-ch-bg-lighter px-3 py-1.5 text-xs font-semibold text-ch-text-primary hover:bg-ch-bg-light transition-colors">
+                Editar
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between pt-3">
+              <div>
+                <span class="block text-xs font-semibold text-ch-text-muted uppercase">Grupo Etário</span>
+                <span class="text-sm font-medium text-ch-text-primary">{{ userService.currentUser().ageGroup || 'Não confirmado' }}</span>
+              </div>
+              <button type="button" (click)="openEditModal('birthDate')"
+                class="rounded bg-ch-bg-lighter px-3 py-1.5 text-xs font-semibold text-ch-text-primary hover:bg-ch-bg-light transition-colors">
+                {{ userService.currentUser().birthDate ? 'Alterar' : 'Confirmar' }}
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Bloco: Senha e Segurança -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Senha e Segurança</h3>
+          <div class="rounded-xl bg-ch-bg-mediumer p-4 border border-ch-border flex flex-col gap-3 divide-y divide-white/5">
+            <div class="flex items-center justify-between pt-1">
+              <div>
+                <span class="block text-xs font-semibold text-ch-text-muted uppercase">Senha</span>
+                <span class="text-sm font-medium text-ch-text-primary">••••••••••••••</span>
+              </div>
+              <button type="button" (click)="openEditModal('password')"
+                class="rounded bg-ch-brand px-4 py-1.5 text-xs font-semibold text-ch-text-primary hover:brightness-110 transition-colors shadow">
+                Mudar Senha
+              </button>
+            </div>
+            <div class="flex items-center justify-between pt-3">
+              <div>
+                <span class="block text-xs font-semibold text-ch-text-primary">Autenticação Multifatorial (2FA)</span>
+                <span class="text-xs text-ch-text-muted">Proteja sua conta do ChatterHub com uma camada extra de segurança.</span>
+              </div>
+              <span class="rounded bg-ch-bg-light px-2.5 py-1 text-xs font-semibold text-ch-text-muted">Disponível</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bloco: Status da Conta -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Status da Conta</h3>
+          <div class="rounded-xl bg-ch-bg-mediumer p-4 border border-ch-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="flex h-3 w-3 rounded-full bg-ch-success shadow-speaking"></span>
+              <span class="text-sm font-semibold text-ch-text-primary">Sua conta está toda em ordem</span>
+            </div>
+            <span class="text-xs text-ch-text-muted">Nenhuma violação registrada</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================== -->
+      <!-- ABA: SENHA E SEGURANÇA -->
+      <!-- ============================================== -->
+      <div *ngIf="activeTab === 'security'" class="flex flex-col gap-6 max-w-2xl animate-fadeIn">
+        <div class="rounded-xl bg-ch-bg-mediumer p-6 border border-ch-border flex flex-col gap-4">
+          <h3 class="text-sm font-bold text-ch-text-primary uppercase">Alteração de Senha</h3>
+          <p class="text-xs text-ch-text-muted">Mantenha sua conta segura com uma senha forte que você não use em outros lugares.</p>
+          
+          <button type="button" (click)="openEditModal('password')"
+            class="self-start rounded-md bg-ch-brand px-5 py-2 text-xs font-bold text-ch-text-primary hover:brightness-110 transition-all shadow">
+            Trocar Senha de Acesso
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- ABA: VOZ E VÍDEO (COM SUPRESSÃO DE RUÍDO) -->
+      <!-- ============================================== -->
+      <div *ngIf="activeTab === 'voice'" class="flex flex-col gap-6 max-w-2xl animate-fadeIn">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Processamento Avançado de Áudio</h3>
+          <div class="rounded-xl bg-ch-bg-mediumer p-4 border border-ch-border flex flex-col gap-4">
+            
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="block text-sm font-semibold text-ch-text-primary">Supressão de Ruído (Filtro Passa-Banda de Voz)</span>
+                <p class="text-xs text-ch-text-muted">
+                  Elimina ruídos de teclado, ventilador e eco ambiente nas chamadas de voz.
+                </p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" [checked]="voiceService.noiseSuppressionEnabled()"
+                  (change)="toggleNoiseSuppression($event)" class="peer sr-only">
+                <div class="peer h-6 w-11 rounded-full bg-ch-bg-lighter after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-ch-success peer-checked:after:translate-x-full"></div>
+              </label>
+            </div>
+
+            <div class="border-t border-ch-border pt-3">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-semibold uppercase text-ch-text-muted">Sensibilidade do Microfone</span>
+                <span class="text-xs font-bold text-ch-brand-light">{{ voiceService.inputSensitivity() }} dB</span>
+              </div>
+              <input type="range" min="5" max="40" [value]="voiceService.inputSensitivity()"
+                (input)="onSensitivityChange($event)"
+                class="w-full h-1.5 bg-ch-bg-lighter rounded-lg appearance-none cursor-pointer accent-ch-brand" />
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- ABA: PAINEL ADMIN & PERMISSÕES -->
+      <!-- ============================================== -->
+      <div *ngIf="activeTab === 'admin' && userService.isAdmin()" class="flex flex-col gap-4 animate-fadeIn">
+        <div class="rounded-lg bg-ch-brand/10 border border-ch-brand/30 p-3 text-xs text-ch-brand-light">
+          👑 <strong>Controle Administrativo Total:</strong> Você pode alterar permissões e cargos de qualquer membro ou removê-los.
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-ch-border bg-ch-bg-mediumer">
+          <table class="w-full text-left text-sm text-ch-text-primary">
+            <thead class="bg-ch-bg-darker text-xs uppercase text-ch-text-muted">
+              <tr>
+                <th class="px-4 py-3">Usuário</th>
+                <th class="px-4 py-3">E-mail</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Cargo</th>
+                <th class="px-4 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <tr *ngFor="let u of userService.users()" class="hover:bg-ch-bg-light transition-colors">
+                <td class="flex items-center gap-2.5 px-4 py-3 font-medium text-ch-text-primary">
+                  <img [src]="u.avatarUrl" class="h-7 w-7 rounded-full" />
+                  <span>{{ u.username }}</span>
+                </td>
+                <td class="px-4 py-3 text-xs text-ch-text-muted">{{ u.email }}</td>
+                <td class="px-4 py-3">
+                  <span class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+                    [ngClass]="{
+                      'bg-ch-success/20 text-ch-success': u.status === 'online',
+                      'bg-ch-warning/20 text-ch-warning': u.status === 'idle',
+                      'bg-ch-danger/20 text-ch-danger': u.status === 'dnd',
+                      'bg-gray-500/20 text-gray-400': u.status === 'offline'
+                    }">
+                    <span class="h-1.5 w-1.5 rounded-full"
+                      [ngClass]="{
+                        'bg-ch-success': u.status === 'online',
+                        'bg-ch-warning': u.status === 'idle',
+                        'bg-ch-danger': u.status === 'dnd',
+                        'bg-gray-400': u.status === 'offline'
+                      }"></span>
+                    {{ u.status }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <select [ngModel]="u.role" (ngModelChange)="changeRole(u.id, $event)"
+                    [disabled]="u.id === userService.currentUser().id"
+                    class="rounded-md bg-ch-bg-medium px-2.5 py-1 text-xs text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand">
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="MODERATOR">MODERATOR</option>
+                    <option value="MEMBER">MEMBER</option>
+                  </select>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <button *ngIf="u.id !== userService.currentUser().id"
+                    type="button" (click)="deleteUser(u.id)"
+                    class="rounded px-2.5 py-1 text-xs font-semibold text-ch-danger hover:bg-ch-danger/15 transition-colors">
+                    Remover
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODAL DE EDIÇÃO DE DADOS REAIS DA CONTA -->
+<!-- ============================================== -->
+<div *ngIf="editModalVisible" class="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
+  <div class="w-full max-w-md rounded-2xl bg-ch-bg-medium p-6 shadow-2xl border border-ch-border" (click)="$event.stopPropagation()">
+    <h2 class="text-lg font-bold text-ch-text-primary mb-1">
+      {{ editTarget === 'password' ? 'Mudar Senha' : 'Atualizar Dados da Conta' }}
+    </h2>
+    <p class="text-xs text-ch-text-muted mb-4">Suas alterações serão salvas imediatamente no banco de dados.</p>
+
+    <form (ngSubmit)="saveProfile()" class="flex flex-col gap-3">
+      
+      <!-- Campo Nome de Usuário -->
+      <div *ngIf="editTarget === 'all' || editTarget === 'username'">
+        <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1">Nome de Usuário</label>
+        <input type="text" [(ngModel)]="editForm.username" name="editUsername" required
+          class="w-full rounded-md bg-ch-bg-mediumer px-3 py-2 text-sm text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand" />
+      </div>
+
+      <!-- Campo E-mail -->
+      <div *ngIf="editTarget === 'all' || editTarget === 'email'">
+        <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1">E-mail</label>
+        <input type="email" [(ngModel)]="editForm.email" name="editEmail" required
+          class="w-full rounded-md bg-ch-bg-mediumer px-3 py-2 text-sm text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand" />
+      </div>
+
+      <!-- Campo Telefone -->
+      <div *ngIf="editTarget === 'all' || editTarget === 'phone'">
+        <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1">Telefone</label>
+        <input type="text" [(ngModel)]="editForm.phone" name="editPhone" placeholder="(11) 98765-4321"
+          class="w-full rounded-md bg-ch-bg-mediumer px-3 py-2 text-sm text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand" />
+      </div>
+
+      <!-- Campo Data de Nascimento -->
+      <div *ngIf="editTarget === 'all' || editTarget === 'birthDate'">
+        <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1">Data de Nascimento</label>
+        <input type="date" [(ngModel)]="editForm.birthDate" name="editBirthDate"
+          class="w-full rounded-md bg-ch-bg-mediumer px-3 py-2 text-sm text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand" />
+      </div>
+
+      <!-- Campos de Senha -->
+      <div *ngIf="editTarget === 'password'" class="flex flex-col gap-2">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1">Senha Atual</label>
+          <input type="password" [(ngModel)]="editForm.currentPassword" name="editCurPass" required placeholder="Digite sua senha atual"
+            class="w-full rounded-md bg-ch-bg-mediumer px-3 py-2 text-sm text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1">Nova Senha</label>
+          <input type="password" [(ngModel)]="editForm.newPassword" name="editNewPass" required placeholder="Digite a nova senha"
+            class="w-full rounded-md bg-ch-bg-mediumer px-3 py-2 text-sm text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand" />
+        </div>
+      </div>
+
+      <p *ngIf="profileError" class="text-xs text-ch-danger font-medium mt-1">{{ profileError }}</p>
+
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" (click)="editModalVisible = false"
+          class="px-4 py-1.5 text-xs font-semibold text-ch-text-muted hover:text-ch-text-primary transition-colors">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="savingProfile"
+          class="rounded bg-ch-brand px-5 py-1.5 text-xs font-bold text-ch-text-primary hover:brightness-110 transition-all disabled:opacity-50 shadow">
+          {{ savingProfile ? 'Salvando...' : 'Salvar Alterações' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

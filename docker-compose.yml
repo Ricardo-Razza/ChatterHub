@@ -21,7 +21,7 @@ services:
     depends_on:
       - chatterhub-api
     ports:
-      - "3000:80"
+      - "3001:80"
 
   # Opcional: Banco MySQL via container (caso não queira usar o MySQL do aaPanel)
   chatterhub-mysql:

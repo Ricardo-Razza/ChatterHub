@@ -2,11 +2,13 @@ package com.api.ChatterHub.controller;
 
 import com.api.ChatterHub.dto.VoiceSignalDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class VoiceWsController {
@@ -19,8 +21,9 @@ public class VoiceWsController {
             return;
         }
 
-        // Se tem targetId específico, envia para fila de notificação específica ou faz broadcast no canal
-        // No STOMP simples, fazemos broadcast no tópico do canal de voz e o front filtra por targetId/senderId
+        log.info("[VoiceWsController] Sinal recebido: tipo={}, canal={}, remetente={}({}), destinatario={}",
+                signal.getType(), signal.getChannelId(), signal.getSenderName(), signal.getSenderId(), signal.getTargetId());
+
         messagingTemplate.convertAndSend("/topic/voice/" + signal.getChannelId(), signal);
     }
 }

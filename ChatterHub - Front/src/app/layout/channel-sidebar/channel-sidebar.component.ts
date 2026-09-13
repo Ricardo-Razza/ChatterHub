@@ -4,6 +4,7 @@ import { LucideAngularModule } from "lucide-angular";
 import { ServerService } from "../../services/server.service";
 import { ChannelService } from "../../services/channel.service";
 import { UserService } from "../../services/user.service";
+import { VoiceService } from "../../services/voice.service";
 import { UserControlsComponent } from "../user-controls/user-controls.component";
 import { CreateChannelModalComponent } from "../create-channel-modal/create-channel-modal.component";
 
@@ -22,7 +23,8 @@ export class ChannelSidebarComponent {
   constructor(
     readonly serverService: ServerService,
     readonly channelService: ChannelService,
-    readonly userService: UserService
+    readonly userService: UserService,
+    readonly voiceService: VoiceService
   ) {}
 
   toggleText(): void { this.textCollapsed.update((v) => !v); }

@@ -77,6 +77,39 @@
             <lucide-icon name="volume-2" [size]="18" class="shrink-0 opacity-70"></lucide-icon>
             <span class="truncate">{{ channel.name }}</span>
           </button>
+
+          <!-- Participantes conectados no canal de voz ativo -->
+          <ul
+            *ngIf="channel.id === channelService.activeChannelId() && channelService.mainAreaMode() === 'voice'"
+            class="ml-6 mt-1 flex flex-col gap-1 pb-1"
+          >
+            <li
+              *ngFor="let user of voiceService.participants()"
+              class="flex items-center gap-2 rounded px-2 py-1 text-xs text-ch-text-primary hover:bg-ch-bg-light"
+            >
+              <img
+                [src]="user.avatarUrl"
+                [alt]="user.username"
+                class="h-5 w-5 rounded-full object-cover ring-1"
+                [ngClass]="user.isSpeaking ? 'ring-ch-success' : 'ring-transparent'"
+              />
+              <span class="truncate font-medium">{{ user.username }}</span>
+              <div class="ml-auto flex items-center gap-1">
+                <lucide-icon
+                  *ngIf="user.isSharingScreen"
+                  name="screen-share"
+                  [size]="12"
+                  class="text-ch-brand-light"
+                ></lucide-icon>
+                <lucide-icon
+                  *ngIf="user.isMuted"
+                  name="mic-off"
+                  [size]="12"
+                  class="text-ch-danger"
+                ></lucide-icon>
+              </div>
+            </li>
+          </ul>
         </li>
         <li *ngIf="channelService.voiceChannels().length === 0">
           <p class="px-2 py-1 text-xs text-ch-text-muted italic">Nenhum canal de voz</p>

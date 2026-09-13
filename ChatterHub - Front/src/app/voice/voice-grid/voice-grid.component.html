@@ -14,10 +14,20 @@
             playsinline
             class="h-full w-full object-contain"
           ></video>
-          <span class="absolute left-3 top-3 rounded bg-black/60 px-2 py-1 text-xs font-medium text-white flex items-center gap-1.5">
+
+          <span class="absolute left-3 top-3 rounded bg-black/60 px-2 py-1 text-xs font-medium text-white flex items-center gap-1.5 backdrop-blur-sm">
             <span class="h-2 w-2 rounded-full bg-ch-danger animate-pulse"></span>
             Ao vivo ({{ featuredUser()?.username }})
           </span>
+
+          <!-- Indicador de carregamento enquanto o stream WebRTC conecta -->
+          <div
+            *ngIf="!voiceService.activeScreenStream()"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 text-ch-text-muted"
+          >
+            <div class="h-8 w-8 animate-spin rounded-full border-2 border-ch-brand border-t-transparent"></div>
+            <span class="text-xs font-medium text-white">Carregando transmissão de {{ featuredUser()?.username }}...</span>
+          </div>
         </div>
       </div>
 

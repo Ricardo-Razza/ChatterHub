@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from "@angular/core";
+import { Component, OnInit, OnDestroy, HostListener, effect } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { LucideAngularModule } from "lucide-angular";
 import { ChannelService } from "../../services/channel.service";
@@ -13,20 +13,48 @@ import { VoiceGridComponent } from "../voice-grid/voice-grid.component";
   templateUrl: "./voice-room.component.html",
 })
 export class VoiceRoomComponent implements OnInit, OnDestroy {
+  private currentActiveChannelId: string | null = null;
+
   constructor(
     readonly channelService: ChannelService,
     readonly userService: UserService,
     readonly voiceService: VoiceService
-  ) {}
+  ) {
+    // Reage dinamicamente a mudanças de canal de voz sem depender de recriação do componente
+    effect(() => {
+      const activeId = this.channelService.activeChannelId();
+      const mode = this.channelService.mainAreaMode();
+
+      if (mode === "voice" && activeId) {
+        if (this.currentActiveChannelId !== activeId) {
+          if (this.currentActiveChannelId) {
+            console.log(`[VoiceRoom] Mudando do canal ${this.currentActiveChannelId} para ${activeId}`);
+            this.voiceService.stopMedia();
+          }
+          this.currentActiveChannelId = activeId;
+          this.voiceService.startMedia();
+        }
+      } else {
+        if (this.currentActiveChannelId) {
+          this.voiceService.stopMedia();
+          this.currentActiveChannelId = null;
+        }
+      }
+    }, { allowSignalWrites: true });
+  }
+
+  @HostListener("window:beforeunload")
+  onBeforeUnload(): void {
+    this.voiceService.stopMedia();
+  }
 
   ngOnInit(): void {
-    // Ao entrar na sala de voz, solicita permissão e inicia a captura de áudio real
-    this.voiceService.startMedia();
+    // A inicialização é tratada de forma reativa pelo effect
   }
 
   ngOnDestroy(): void {
-    // Ao sair da sala de voz, desliga o microfone e encerra o fluxo
     this.voiceService.stopMedia();
+    this.currentActiveChannelId = null;
   }
 
   toggleScreenShare(): void {
@@ -43,6 +71,7 @@ export class VoiceRoomComponent implements OnInit, OnDestroy {
 
   leaveCall(): void {
     this.voiceService.stopMedia();
+    this.currentActiveChannelId = null;
     this.channelService.leaveVoiceChannel();
   }
 }

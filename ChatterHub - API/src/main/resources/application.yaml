@@ -2,12 +2,12 @@ spring:
   application:
     name: ChatterHub
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:vps}
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:supergurizes@gmail.com}
-    password: ${MAIL_PASSWORD:etym zgbs jdmf ardo}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -17,15 +17,15 @@ spring:
 
 ---
 # ----------------------------------------------------
-# PERFIL DEV (Local / Testes em memória ou MySQL local)
+# PERFIL DEV (Banco H2 em Memória para Testes Locais)
 # ----------------------------------------------------
 spring:
   config:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:h2:mem:chatterhubdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driverClassName: org.h2.Driver
+    url: jdbc:h2:mem:chatterhubdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
     username: sa
     password: ""
   h2:
@@ -33,32 +33,30 @@ spring:
       enabled: true
       path: /h2-console
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: update
     show-sql: false
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 ---
 # ----------------------------------------------------
-# PERFIL PROD (VPS / Docker / MySQL ou Postgres)
+# PERFIL VPS (Banco MySQL na VPS)
 # ----------------------------------------------------
 spring:
   config:
     activate:
-      on-profile: prod
+      on-profile: vps
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:chatterhub}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:root}
+    url: jdbc:mysql://${DB_HOST:179.199.128.219}:${DB_PORT:3306}/${DB_NAME:chatterhubdb}?serverTimezone=America/Sao_Paulo&useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
     driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USER:razza-chatterhubDB}
+    password: ${DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
-    database-platform: org.hibernate.dialect.MySQLDialect
 
 server:
   port: ${PORT:8080}

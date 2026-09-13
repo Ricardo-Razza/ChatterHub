@@ -43,7 +43,8 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "host": "0.0.0.0",
-            "ssl": true
+            "ssl": true,
+            "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": { "buildTarget": "discord-clone:build:production" },

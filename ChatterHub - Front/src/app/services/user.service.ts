@@ -39,12 +39,13 @@ export class UserService {
   }
 
   private restoreSession(): void {
-    const raw = localStorage.getItem("ch_user");
+    const raw = sessionStorage.getItem("ch_user") || localStorage.getItem("ch_user");
     if (raw) {
       try {
         const u = JSON.parse(raw);
         if (u.id) {
           this._currentUser.set(u);
+          sessionStorage.setItem("ch_user", raw);
         }
       } catch (e) {}
     }
@@ -80,7 +81,17 @@ export class UserService {
           const fresh = mapped.find(m => m.id === cur.id);
           if (fresh) {
             this._currentUser.set(fresh);
-            localStorage.setItem("ch_user", JSON.stringify(fresh));
+            const serialized = JSON.stringify(fresh);
+            sessionStorage.setItem("ch_user", serialized);
+            const localRaw = localStorage.getItem("ch_user");
+            if (localRaw) {
+              try {
+                const localUser = JSON.parse(localRaw);
+                if (localUser.id === fresh.id) {
+                  localStorage.setItem("ch_user", serialized);
+                }
+              } catch (e) {}
+            }
           }
         }
       },
@@ -117,7 +128,9 @@ export class UserService {
             emailVerified: true,
           };
           this._currentUser.set(user);
-          localStorage.setItem("ch_user", JSON.stringify(user));
+          const serialized = JSON.stringify(user);
+          sessionStorage.setItem("ch_user", serialized);
+          localStorage.setItem("ch_user", serialized);
           this.loadUsers();
           resolve(user);
         },
@@ -143,7 +156,9 @@ export class UserService {
             emailVerified: res.emailVerified,
           };
           this._currentUser.set(user);
-          localStorage.setItem("ch_user", JSON.stringify(user));
+          const serialized = JSON.stringify(user);
+          sessionStorage.setItem("ch_user", serialized);
+          localStorage.setItem("ch_user", serialized);
           this.loadUsers();
           resolve(user);
         },
@@ -169,7 +184,9 @@ export class UserService {
             avatarUrl: updated.avatarUrl,
           };
           this._currentUser.set(freshUser);
-          localStorage.setItem("ch_user", JSON.stringify(freshUser));
+          const serialized = JSON.stringify(freshUser);
+          sessionStorage.setItem("ch_user", serialized);
+          localStorage.setItem("ch_user", serialized);
           this.loadUsers();
           resolve();
         },
@@ -207,6 +224,7 @@ export class UserService {
   }
 
   logout(): void {
+    sessionStorage.removeItem("ch_user");
     localStorage.removeItem("ch_user");
     this._currentUser.set(null);
     window.location.reload();

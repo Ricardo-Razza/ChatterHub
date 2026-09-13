@@ -1,27 +1,36 @@
 import { Injectable } from "@angular/core";
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { Observable, Subject } from "rxjs";
+import { Observable, BehaviorSubject } from "rxjs";
 import { environment } from "../../environments/environment";
 
 @Injectable({ providedIn: "root" })
 export class WebSocketService {
   private client: Client;
-  private connected$ = new Subject<boolean>();
+  private connected$ = new BehaviorSubject<boolean>(false);
   private _isConnected = false;
+  private pendingQueue: Array<{ destination: string; body: any }> = [];
 
   constructor() {
+    const wsUrl = environment.wsUrl.startsWith("http")
+      ? environment.wsUrl
+      : `${window.location.protocol}//${window.location.host}${environment.wsUrl}`;
+
+    console.log("[WebSocket] Conectando STOMP em:", wsUrl);
+
     this.client = new Client({
-      webSocketFactory: () => new SockJS(environment.wsUrl),
-      reconnectDelay: 5000,
+      webSocketFactory: () => new SockJS(wsUrl),
+      reconnectDelay: 3000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
+      debug: (str) => console.log("[STOMP]", str),
     });
 
     this.client.onConnect = () => {
       console.log("[WebSocket] Conectado ao servidor STOMP");
       this._isConnected = true;
       this.connected$.next(true);
+      this.flushPendingQueue();
     };
 
     this.client.onStompError = (frame) => {
@@ -41,39 +50,54 @@ export class WebSocketService {
     return this._isConnected && this.client.connected;
   }
 
+  get onConnected$(): Observable<boolean> {
+    return this.connected$.asObservable();
+  }
+
   subscribe<T>(topic: string): Observable<T> {
     return new Observable<T>((observer) => {
       let sub: StompSubscription | undefined;
 
       const setupSubscription = () => {
-        if (this.client.connected) {
-          sub = this.client.subscribe(topic, (message: IMessage) => {
-            try {
-              const parsed: T = JSON.parse(message.body);
-              observer.next(parsed);
-            } catch (err) {
-              console.error("[WebSocket] Falha ao processar mensagem JSON", err);
-            }
-          });
+        if (this.client.connected && !sub) {
+          try {
+            sub = this.client.subscribe(topic, (message: IMessage) => {
+              try {
+                const parsed: T = JSON.parse(message.body);
+                observer.next(parsed);
+              } catch (err) {
+                console.error("[WebSocket] Falha ao processar mensagem JSON", err);
+              }
+            });
+          } catch (err) {
+            console.error("[WebSocket] Erro ao subscrever no tópico", topic, err);
+          }
         }
       };
 
       if (this.client.connected) {
         setupSubscription();
-      } else {
-        const connSub = this.connected$.subscribe((isConn) => {
-          if (isConn && !sub) {
-            setupSubscription();
-          }
-        });
-        return () => {
-          connSub.unsubscribe();
-          sub?.unsubscribe();
-        };
       }
 
+      const connSub = this.connected$.subscribe((isConn) => {
+        if (isConn && !sub) {
+          setupSubscription();
+        } else if (!isConn && sub) {
+          try {
+            sub.unsubscribe();
+          } catch (e) {}
+          sub = undefined;
+        }
+      });
+
       return () => {
-        sub?.unsubscribe();
+        connSub.unsubscribe();
+        if (sub) {
+          try {
+            sub.unsubscribe();
+          } catch (e) {}
+          sub = undefined;
+        }
       };
     });
   }
@@ -85,7 +109,22 @@ export class WebSocketService {
         body: JSON.stringify(body),
       });
     } else {
-      console.warn("[WebSocket] Não conectado. Mensagem não enviada via STOMP:", destination, body);
+      console.log("[WebSocket] Conexão pendente. Enfileirando mensagem para:", destination);
+      this.pendingQueue.push({ destination, body });
+    }
+  }
+
+  private flushPendingQueue(): void {
+    if (this.pendingQueue.length === 0) return;
+    console.log(`[WebSocket] Descarregando ${this.pendingQueue.length} mensagem(ns) pendente(s)...`);
+    while (this.pendingQueue.length > 0) {
+      const item = this.pendingQueue.shift();
+      if (item && this.client.connected) {
+        this.client.publish({
+          destination: item.destination,
+          body: JSON.stringify(item.body),
+        });
+      }
     }
   }
 }

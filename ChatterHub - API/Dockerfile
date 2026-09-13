@@ -10,6 +10,6 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 VOLUME /tmp
 COPY --from=build /app/target/*.jar app.jar
-ENV SPRING_PROFILES_ACTIVE=prod
+ENV SPRING_PROFILES_ACTIVE=vps
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

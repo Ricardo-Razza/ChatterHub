@@ -1,0 +1,56 @@
+{
+  "name": "chatterhub-desktop",
+  "version": "1.0.0",
+  "description": "ChatterHub - Aplicativo Desktop para Voz, Vídeo e Chat",
+  "main": "main.js",
+  "author": "Ricardo Razza <ricardo@razzadev.io>",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "io.razzadev.chatterhub",
+    "productName": "ChatterHub",
+    "copyright": "Copyright © 2026 Ricardo Razza",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "offline.html",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ChatterHub",
+      "uninstallDisplayName": "ChatterHub"
+    },
+    "portable": {
+      "artifactName": "ChatterHub-Portable-${version}.exe"
+    }
+  }
+}

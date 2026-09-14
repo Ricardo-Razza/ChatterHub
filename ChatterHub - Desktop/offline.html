@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatterHub - Sem Conexão</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #0b0e14;
+      color: #f1f5f9;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .card {
+      background-color: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+    .logo-container {
+      margin-bottom: 20px;
+      display: inline-flex;
+      background: #5865f2;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 0 20px rgba(88, 101, 242, 0.4);
+    }
+    .logo-container img {
+      width: 48px;
+      height: 48px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+    p {
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #5865f2;
+      color: #ffffff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      width: 100%;
+    }
+    .btn:hover {
+      background-color: #4752c4;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-container">
+      <img src="assets/icon.png" alt="ChatterHub Logo">
+    </div>
+    <h1>Sem Conexão com o Servidor</h1>
+    <p>Não foi possível conectar ao ChatterHub. Verifique sua conexão com a internet ou aguarde alguns instantes se o servidor estiver reiniciando.</p>
+    <button class="btn" onclick="retry()">Tentar Novamente</button>
+  </div>
+
+  <script>
+    function retry() {
+      window.location.href = 'https://chatterhub.razzadev.io';
+    }
+  </script>
+</body>
+</html>

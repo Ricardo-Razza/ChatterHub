@@ -249,15 +249,88 @@
       <!-- ABA: VOZ E VÍDEO (COM SUPRESSÃO DE RUÍDO) -->
       <!-- ============================================== -->
       <div *ngIf="activeTab === 'voice'" class="flex flex-col gap-6 max-w-2xl animate-fadeIn">
+        
+        <!-- Bloco: Dispositivos de Áudio -->
         <div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Processamento Avançado de Áudio</h3>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Dispositivos de Áudio</h3>
+          <div class="rounded-xl bg-ch-bg-mediumer p-4 border border-ch-border flex flex-col gap-4">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Microfone -->
+              <div>
+                <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1.5 flex items-center gap-1.5">
+                  <lucide-icon name="mic" [size]="14"></lucide-icon>
+                  Dispositivo de Entrada (Microfone)
+                </label>
+                <select
+                  [value]="voiceService.selectedMicrophoneId()"
+                  (change)="onMicrophoneChange($event)"
+                  class="w-full rounded-lg bg-ch-bg-darker px-3 py-2 text-xs font-medium text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand transition-colors cursor-pointer"
+                >
+                  <option *ngIf="voiceService.inputDevices().length === 0" value="">Microfone Padrão do Sistema</option>
+                  <option *ngFor="let dev of voiceService.inputDevices(); let i = index" [value]="dev.deviceId">
+                    {{ dev.label || ('Microfone ' + (i + 1)) }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Fone / Saída -->
+              <div>
+                <label class="block text-xs font-semibold uppercase text-ch-text-muted mb-1.5 flex items-center gap-1.5">
+                  <lucide-icon name="headphones" [size]="14"></lucide-icon>
+                  Dispositivo de Saída (Headset / Alto-falante)
+                </label>
+                <select
+                  [value]="voiceService.selectedAudioOutputId()"
+                  (change)="onOutputDeviceChange($event)"
+                  class="w-full rounded-lg bg-ch-bg-darker px-3 py-2 text-xs font-medium text-ch-text-primary outline-none border border-ch-border focus:border-ch-brand transition-colors cursor-pointer"
+                >
+                  <option *ngIf="voiceService.outputDevices().length === 0" value="">Alto-falante Padrão do Sistema</option>
+                  <option *ngFor="let dev of voiceService.outputDevices(); let i = index" [value]="dev.deviceId">
+                    {{ dev.label || ('Alto-falante / Headset ' + (i + 1)) }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Teste de Microfone / Barra em tempo real -->
+            <div class="border-t border-ch-border pt-3">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-xs font-semibold uppercase text-ch-text-muted">Nível de Entrada do Microfone</span>
+                <span class="text-xs font-bold" [ngClass]="voiceService.micVolumeLevel() > voiceService.inputSensitivity() ? 'text-ch-success' : 'text-ch-text-muted'">
+                  {{ voiceService.micVolumeLevel() > voiceService.inputSensitivity() ? 'Voz Detectada' : 'Abaixo do corte' }}
+                </span>
+              </div>
+              <div class="relative w-full h-3 bg-ch-bg-darker rounded-full overflow-hidden border border-ch-border">
+                <div
+                  class="h-full bg-gradient-to-r from-ch-brand via-emerald-400 to-emerald-500 transition-all duration-75 rounded-full"
+                  [style.width.%]="voiceService.micVolumeLevel()"
+                ></div>
+                <!-- Marcador da Sensibilidade -->
+                <div
+                  class="absolute top-0 bottom-0 w-0.5 bg-ch-danger shadow-md"
+                  [style.left.%]="voiceService.inputSensitivity() * 2"
+                  title="Ponto de corte de ruído"
+                ></div>
+              </div>
+              <span class="block mt-1 text-[11px] text-ch-text-muted">
+                Fale no microfone para verificar se a barra ultrapassa o marcador vermelho de corte de ruído.
+              </span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Bloco: Supressão e Sensibilidade -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-ch-text-muted mb-3">Supressão de Ruído & Filtros</h3>
           <div class="rounded-xl bg-ch-bg-mediumer p-4 border border-ch-border flex flex-col gap-4">
             
             <div class="flex items-center justify-between">
               <div>
-                <span class="block text-sm font-semibold text-ch-text-primary">Supressão de Ruído (Filtro Passa-Banda de Voz)</span>
-                <p class="text-xs text-ch-text-muted">
-                  Elimina ruídos de teclado, ventilador e eco ambiente nas chamadas de voz.
+                <span class="block text-sm font-semibold text-ch-text-primary">Supressão de Ruído Inteligente (Noise Gate)</span>
+                <p class="text-xs text-ch-text-muted max-w-md">
+                  Corta automaticamente ruídos de teclado, ventilador e eco ambiente quando você não estiver falando.
                 </p>
               </div>
               <label class="relative inline-flex cursor-pointer items-center">
@@ -269,16 +342,20 @@
 
             <div class="border-t border-ch-border pt-3">
               <div class="flex justify-between items-center mb-1">
-                <span class="text-xs font-semibold uppercase text-ch-text-muted">Sensibilidade do Microfone</span>
+                <span class="text-xs font-semibold uppercase text-ch-text-muted">Sensibilidade do Microfone (Ponto de Corte)</span>
                 <span class="text-xs font-bold text-ch-brand-light">{{ voiceService.inputSensitivity() }} dB</span>
               </div>
-              <input type="range" min="5" max="40" [value]="voiceService.inputSensitivity()"
+              <input type="range" min="5" max="45" [value]="voiceService.inputSensitivity()"
                 (input)="onSensitivityChange($event)"
                 class="w-full h-1.5 bg-ch-bg-lighter rounded-lg appearance-none cursor-pointer accent-ch-brand" />
+              <span class="block mt-1 text-[11px] text-ch-text-muted">
+                Aumente se o seu microfone estiver captando barulhos indesejados, ou diminua se sua voz estiver cortando.
+              </span>
             </div>
 
           </div>
         </div>
+
       </div>
 
       <!-- ============================================== -->

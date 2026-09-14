@@ -1,5 +1,6 @@
 import { Component, computed, ElementRef, viewChild, effect } from "@angular/core";
 import { CommonModule } from "@angular/common";
+import { LucideAngularModule } from "lucide-angular";
 import { UserCardComponent } from "../user-card/user-card.component";
 import { VoiceService } from "../../services/voice.service";
 import { User } from "../../models/user.model";
@@ -7,11 +8,12 @@ import { User } from "../../models/user.model";
 @Component({
   selector: "app-voice-grid",
   standalone: true,
-  imports: [CommonModule, UserCardComponent],
+  imports: [CommonModule, UserCardComponent, LucideAngularModule],
   templateUrl: "./voice-grid.component.html",
 })
 export class VoiceGridComponent {
   readonly screenVideoRef = viewChild<ElementRef<HTMLVideoElement>>("screenVideo");
+  private previousScreenVolume = 100;
 
   constructor(readonly voiceService: VoiceService) {
     effect(() => {
@@ -25,8 +27,8 @@ export class VoiceGridComponent {
         }
 
         if (stream) {
-          // O elemento <video> é mantido mutado pois todo áudio (microfone e som da tela)
-          // é reproduzido com alta fidelidade e sem duplicidade pelo VoiceService (via WebRTC AudioElements).
+          // Mantido muted no elemento de vídeo pois o áudio do stream de tela
+          // é reproduzido com volume ajustável via WebRTC pelo VoiceService
           videoEl.muted = true;
 
           videoEl.play().catch((err) => {
@@ -48,4 +50,20 @@ export class VoiceGridComponent {
     if (!featured) return this.voiceService.participants();
     return this.voiceService.participants().filter((u) => u.id !== featured.id);
   });
+
+  onScreenVolumeChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const val = Number(target.value);
+    this.voiceService.setScreenShareVolume(val);
+  }
+
+  toggleMuteScreen(): void {
+    const current = this.voiceService.screenShareVolume();
+    if (current > 0) {
+      this.previousScreenVolume = current;
+      this.voiceService.setScreenShareVolume(0);
+    } else {
+      this.voiceService.setScreenShareVolume(this.previousScreenVolume || 100);
+    }
+  }
 }

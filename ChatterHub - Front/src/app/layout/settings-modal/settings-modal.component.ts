@@ -40,6 +40,7 @@ export class SettingsModalComponent {
   open(): void {
     this.activeTab = "account";
     this.visible.set(true);
+    this.voiceService.loadAudioDevices();
   }
 
   close(): void {
@@ -110,6 +111,16 @@ export class SettingsModalComponent {
     } finally {
       this.savingProfile = false;
     }
+  }
+
+  onMicrophoneChange(event: any): void {
+    const deviceId = event.target.value;
+    this.voiceService.setMicrophoneDevice(deviceId);
+  }
+
+  onOutputDeviceChange(event: any): void {
+    const deviceId = event.target.value;
+    this.voiceService.setAudioOutputDevice(deviceId);
   }
 
   toggleNoiseSuppression(event: any): void {

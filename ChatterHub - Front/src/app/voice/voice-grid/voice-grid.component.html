@@ -28,6 +28,29 @@
             <div class="h-8 w-8 animate-spin rounded-full border-2 border-ch-brand border-t-transparent"></div>
             <span class="text-xs font-medium text-white">Carregando transmissão de {{ featuredUser()?.username }}...</span>
           </div>
+
+          <!-- Controle de Volume da Transmissão / Tela Compartilhada -->
+          <div class="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-lg bg-black/75 px-3 py-1.5 backdrop-blur-md border border-white/10 shadow-lg text-white">
+            <button
+              type="button"
+              (click)="toggleMuteScreen()"
+              class="text-ch-text-muted hover:text-white transition-colors focus:outline-none flex items-center"
+              [title]="voiceService.screenShareVolume() === 0 ? 'Desmutar áudio da tela' : 'Mutar áudio da tela'"
+            >
+              <lucide-icon [name]="voiceService.screenShareVolume() === 0 ? 'volume-x' : 'volume-2'" [size]="16"></lucide-icon>
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              [value]="voiceService.screenShareVolume()"
+              (input)="onScreenVolumeChange($event)"
+              class="w-20 sm:w-28 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-ch-brand"
+            />
+            <span class="text-[11px] font-semibold tabular-nums text-ch-text-primary min-w-[2rem] text-right">
+              {{ voiceService.screenShareVolume() }}%
+            </span>
+          </div>
         </div>
       </div>
 

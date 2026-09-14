@@ -25,17 +25,12 @@ export class VoiceGridComponent {
         }
 
         if (stream) {
-          // Mutamos o vídeo local para evitar eco/feedback para quem está transmitindo
-          // Espectadores remotos mantêm áudio para ouvir o som da tela/aba transmitida
-          const isLocal = this.voiceService.isLocalSharing();
-          videoEl.muted = isLocal;
+          // O elemento <video> é mantido mutado pois todo áudio (microfone e som da tela)
+          // é reproduzido com alta fidelidade e sem duplicidade pelo VoiceService (via WebRTC AudioElements).
+          videoEl.muted = true;
 
           videoEl.play().catch((err) => {
-            console.warn("[VoiceGrid] Autoplay com som falhou, iniciando mutado:", err);
-            videoEl.muted = true;
-            videoEl.play().catch((e) => {
-              console.error("[VoiceGrid] Erro ao reproduzir vídeo:", e);
-            });
+            console.error("[VoiceGrid] Erro ao reproduzir vídeo:", err);
           });
         }
       }

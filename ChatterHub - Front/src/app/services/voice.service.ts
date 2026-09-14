@@ -8,7 +8,7 @@ import { User } from "../models/user.model";
 interface PeerEntry {
   pc: RTCPeerConnection;
   remoteStream: MediaStream;
-  audioElement?: HTMLAudioElement;
+  audioElements?: Map<string, HTMLAudioElement>;
   pendingCandidates: RTCIceCandidateInit[];
   screenSenders: RTCRtpSender[];
 }
@@ -99,8 +99,10 @@ export class VoiceService {
 
       // Aplica ensurdecimento aos elementos de áudio dos peers conectados
       Object.values(this.peers).forEach((peer) => {
-        if (peer.audioElement) {
-          peer.audioElement.muted = Boolean(me.isDeafened);
+        if (peer.audioElements) {
+          peer.audioElements.forEach((audio) => {
+            audio.muted = Boolean(me.isDeafened);
+          });
         }
       });
 
@@ -424,6 +426,7 @@ export class VoiceService {
     const entry: PeerEntry = {
       pc,
       remoteStream,
+      audioElements: new Map<string, HTMLAudioElement>(),
       pendingCandidates: [],
       screenSenders: [],
     };
@@ -470,18 +473,28 @@ export class VoiceService {
       }
 
       if (track.kind === "audio") {
-        if (!entry.audioElement) {
+        if (!entry.audioElements) {
+          entry.audioElements = new Map<string, HTMLAudioElement>();
+        }
+
+        if (!entry.audioElements.has(track.id)) {
           const audio = new Audio();
           audio.autoplay = true;
           const me = this.userService.currentUser();
           audio.muted = Boolean(me.isDeafened);
-          entry.audioElement = audio;
+          audio.srcObject = new MediaStream([track]);
+          audio
+            .play()
+            .catch((e) => console.warn("[VoiceService] Autoplay áudio remoto:", e));
+
+          entry.audioElements.set(track.id, audio);
+
+          track.onended = () => {
+            audio.pause();
+            audio.srcObject = null;
+            entry.audioElements?.delete(track.id);
+          };
         }
-        const audioOnlyStream = new MediaStream(entry.remoteStream.getAudioTracks());
-        entry.audioElement.srcObject = audioOnlyStream;
-        entry.audioElement
-          .play()
-          .catch((e) => console.warn("[VoiceService] Autoplay áudio remoto:", e));
       }
 
       if (track.kind === "video") {
@@ -611,9 +624,12 @@ export class VoiceService {
   private closePeer(peerId: string): void {
     const peer = this.peers[peerId];
     if (peer) {
-      if (peer.audioElement) {
-        peer.audioElement.pause();
-        peer.audioElement.srcObject = null;
+      if (peer.audioElements) {
+        peer.audioElements.forEach((audio) => {
+          audio.pause();
+          audio.srcObject = null;
+        });
+        peer.audioElements.clear();
       }
       peer.remoteStream.getTracks().forEach((track) => track.stop());
       peer.pc.close();
@@ -716,7 +732,11 @@ export class VoiceService {
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
-          audio: true,
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
         });
 
         this._screenStream.set(stream);
@@ -726,6 +746,12 @@ export class VoiceService {
 
         const videoTrack = stream.getVideoTracks()[0];
         const audioTracks = stream.getAudioTracks();
+
+        if (audioTracks.length === 0) {
+          console.warn("[VoiceService] Compartilhamento sem áudio: certifique-se de marcar 'Compartilhar áudio' na janela do navegador.");
+        } else {
+          console.log("[VoiceService] Áudio de tela capturado com sucesso!");
+        }
 
         for (const peerId of Object.keys(this.peers)) {
           const peer = this.peers[peerId];

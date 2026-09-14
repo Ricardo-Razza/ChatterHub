@@ -38,6 +38,7 @@ export class VoiceService {
   private readonly _noiseSuppressionEnabled = signal<boolean>(localStorage.getItem("ch_noise_suppression") !== "false");
   private readonly _inputSensitivity = signal<number>(Number(localStorage.getItem("ch_input_sensitivity")) || 15);
   private readonly _screenShareVolume = signal<number>(Number(localStorage.getItem("ch_screen_volume")) || 100);
+  private readonly _antiEchoEnabled = signal<boolean>(localStorage.getItem("ch_anti_echo") !== "false");
 
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -70,6 +71,7 @@ export class VoiceService {
   readonly selectedAudioOutputId = this._selectedAudioOutputId.asReadonly();
   readonly micVolumeLevel = this._micVolumeLevel.asReadonly();
   readonly screenShareVolume = this._screenShareVolume.asReadonly();
+  readonly antiEchoEnabled = this._antiEchoEnabled.asReadonly();
 
   readonly isLocalSharing = computed<boolean>(() => {
     const sharingId = this._sharingUserId();
@@ -146,6 +148,22 @@ export class VoiceService {
         });
       }
     }, { allowSignalWrites: true });
+
+    // Anti-Eco inteligente para Transmissão de Tela:
+    // Quando o usuário local estiver falando, o áudio recebido da tela é silenciado temporariamente
+    // para que a pessoa NUNCA escute o retorno/eco da própria voz (seja do Discord ou do ChatterHub)
+    effect(() => {
+      const isSpeaking = this._isSpeaking();
+      const antiEcho = this._antiEchoEnabled();
+      const baseVolume = this._screenShareVolume() / 100;
+      const effectiveVolume = (antiEcho && isSpeaking) ? 0 : baseVolume;
+
+      Object.values(this.peers).forEach((peer) => {
+        if (peer.screenAudio) {
+          peer.screenAudio.volume = effectiveVolume;
+        }
+      });
+    });
   }
 
   readonly participants = computed<User[]>(() => {
@@ -241,6 +259,11 @@ export class VoiceService {
         peer.screenAudio.volume = clamped / 100;
       }
     });
+  }
+
+  setAntiEcho(enabled: boolean): void {
+    this._antiEchoEnabled.set(enabled);
+    localStorage.setItem("ch_anti_echo", String(enabled));
   }
 
   async startMedia(): Promise<void> {
@@ -936,8 +959,8 @@ export class VoiceService {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
+          echoCancellation: true,
+          noiseSuppression: true,
           autoGainControl: false,
         },
       });

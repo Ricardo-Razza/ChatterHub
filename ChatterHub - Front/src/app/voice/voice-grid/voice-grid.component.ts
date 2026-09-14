@@ -51,6 +51,20 @@ export class VoiceGridComponent {
     return this.voiceService.participants().filter((u) => u.id !== featured.id);
   });
 
+  readonly gridLayoutClass = computed<string>(() => {
+    const count = this.voiceService.participants().length;
+    if (count <= 1) {
+      return "grid-cols-1 max-w-xl mx-auto";
+    }
+    if (count === 2) {
+      return "grid-cols-2 max-w-4xl mx-auto";
+    }
+    if (count <= 4) {
+      return "grid-cols-2";
+    }
+    return "grid-cols-2 md:grid-cols-3";
+  });
+
   onScreenVolumeChange(event: Event): void {
     const target = event.target as HTMLInputElement;
     const val = Number(target.value);

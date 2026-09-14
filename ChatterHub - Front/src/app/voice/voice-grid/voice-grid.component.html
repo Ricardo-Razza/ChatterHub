@@ -1,11 +1,11 @@
-<div class="flex h-full w-full gap-3 p-4">
+<div class="flex h-full w-full gap-3 p-3 min-h-0">
 
-  <!-- LAYOUT COM COMPARTILHAMENTO DE TELA: vídeo em destaque (~80%) + grade lateral -->
+  <!-- LAYOUT COM COMPARTILHAMENTO DE TELA: vídeo em destaque + grade lateral -->
   <ng-container *ngIf="featuredUser(); else normalGrid">
-    <div class="flex h-full w-full flex-col gap-3 md:flex-row">
+    <div class="flex h-full w-full gap-3 flex-col md:flex-row min-h-0">
 
       <!-- Tela compartilhada em destaque com stream de vídeo real -->
-      <div class="flex h-[65%] w-full md:h-full md:w-[80%]">
+      <div class="flex-1 min-h-0 flex items-center justify-center">
         <div class="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl
                     bg-black ring-2 ring-ch-brand shadow-brand-glow">
           <video
@@ -55,21 +55,17 @@
       </div>
 
       <!-- Grade lateral com os participantes -->
-      <div class="grid h-[35%] w-full grid-cols-3 gap-2 overflow-y-auto md:h-full md:w-[20%] md:grid-cols-1">
-        <app-user-card *ngFor="let user of otherParticipants()" [user]="user" />
+      <div class="flex md:flex-col gap-2 overflow-auto shrink-0 w-full md:w-64 max-h-40 md:max-h-full items-center justify-center">
+        <app-user-card *ngFor="let user of otherParticipants()" [user]="user" class="w-44 md:w-full shrink-0" />
       </div>
     </div>
   </ng-container>
 
-  <!-- LAYOUT NORMAL: grade de participantes -->
+  <!-- LAYOUT NORMAL: grade de participantes lado a lado -->
   <ng-template #normalGrid>
     <div
-      class="grid h-full w-full auto-rows-fr gap-3"
-      [ngClass]="{
-        'grid-cols-1 max-w-xl mx-auto': voiceService.participants().length === 1,
-        'grid-cols-2': voiceService.participants().length === 2,
-        'grid-cols-2 md:grid-cols-3': voiceService.participants().length > 2
-      }"
+      class="grid h-full w-full gap-4 items-center justify-center auto-rows-fr min-h-0"
+      [ngClass]="gridLayoutClass()"
     >
       <app-user-card *ngFor="let user of voiceService.participants()" [user]="user" />
     </div>

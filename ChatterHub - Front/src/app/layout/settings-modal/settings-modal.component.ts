@@ -128,6 +128,11 @@ export class SettingsModalComponent {
     this.voiceService.setNoiseSuppression(checked);
   }
 
+  toggleAntiEcho(event: any): void {
+    const checked = event.target.checked;
+    this.voiceService.setAntiEcho(checked);
+  }
+
   onSensitivityChange(event: any): void {
     const val = Number(event.target.value);
     this.voiceService.setInputSensitivity(val);

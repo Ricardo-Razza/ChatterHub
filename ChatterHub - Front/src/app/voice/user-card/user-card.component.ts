@@ -8,6 +8,9 @@ import { User } from '../../models/user.model';
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
   templateUrl: './user-card.component.html',
+  host: {
+    class: 'flex items-center justify-center w-full h-full min-h-0 min-w-0',
+  },
 })
 export class UserCardComponent {
   @Input({ required: true }) user!: User;

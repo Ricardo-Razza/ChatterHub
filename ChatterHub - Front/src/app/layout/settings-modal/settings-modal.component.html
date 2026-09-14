@@ -340,6 +340,21 @@
               </label>
             </div>
 
+            <!-- Anti-Retorno de Voz na Transmissão -->
+            <div class="flex items-center justify-between border-t border-ch-border pt-3">
+              <div>
+                <span class="block text-sm font-semibold text-ch-text-primary">Anti-Retorno de Voz na Transmissão</span>
+                <p class="text-xs text-ch-text-muted max-w-md">
+                  Silencia instantaneamente o áudio de retorno da tela compartilhada enquanto você fala, para que você nunca ouça o eco da sua própria voz (tanto do ChatterHub quanto do Discord).
+                </p>
+              </div>
+              <label class="relative inline-flex cursor-pointer items-center">
+                <input type="checkbox" [checked]="voiceService.antiEchoEnabled()"
+                  (change)="toggleAntiEcho($event)" class="peer sr-only">
+                <div class="peer h-6 w-11 rounded-full bg-ch-bg-lighter after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-ch-success peer-checked:after:translate-x-full"></div>
+              </label>
+            </div>
+
             <div class="border-t border-ch-border pt-3">
               <div class="flex justify-between items-center mb-1">
                 <span class="text-xs font-semibold uppercase text-ch-text-muted">Sensibilidade do Microfone (Ponto de Corte)</span>

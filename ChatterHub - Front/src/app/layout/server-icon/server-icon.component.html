@@ -1,0 +1,40 @@
+<div class="group relative flex items-center">
+
+  <!-- Indicador (pílula azul) à esquerda do ícone -->
+  <span
+    class="absolute -left-3 rounded-r-full bg-ch-accent transition-all duration-200"
+    [class.w-1]="!active"
+    [class.h-2]="!active"
+    [class.opacity-0]="!active"
+    [class.group-hover:opacity-100]="!active"
+    [class.group-hover:h-5]="!active"
+    [class.w-1.5]="active"
+    [class.h-10]="active"
+    [class.opacity-100]="active"
+  ></span>
+
+  <!-- Ícone do servidor -->
+  <button
+    type="button"
+    (click)="onClick()"
+    [attr.aria-label]="server.name"
+    class="server-tooltip-wrapper relative flex h-12 w-12 items-center justify-center overflow-hidden
+           bg-ch-bg-dark text-sm font-semibold text-ch-text-primary
+           transition-all duration-200 ease-out
+           hover:rounded-xl hover:bg-ch-brand hover:text-white hover:scale-105 active:translate-y-px"
+    [ngClass]="active ? 'rounded-xl bg-ch-brand text-white shadow-brand-glow' : 'rounded-full'"
+  >
+    <img *ngIf="server.iconUrl" [src]="server.iconUrl" [alt]="server.name" class="h-full w-full object-cover" />
+    <span *ngIf="!server.iconUrl">{{ server.initials }}</span>
+
+    <!-- Badge de notificação -->
+    <span
+      *ngIf="server.hasNotification"
+      class="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full
+             border-[3px] border-ch-bg-darker bg-ch-danger"
+    ></span>
+  </button>
+
+  <!-- Tooltip -->
+  <span class="server-tooltip">{{ server.name }}</span>
+</div>

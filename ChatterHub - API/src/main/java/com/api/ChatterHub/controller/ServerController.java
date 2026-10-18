@@ -1,0 +1,53 @@
+package com.api.ChatterHub.controller;
+
+import com.api.ChatterHub.dto.ServerRequest;
+import com.api.ChatterHub.dto.ServerResponse;
+import com.api.ChatterHub.dto.UserResponse;
+import com.api.ChatterHub.service.ServerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/servers")
+public class ServerController {
+
+    @Autowired
+    private ServerService serverService;
+
+    @GetMapping
+    public ResponseEntity<List<ServerResponse>> getServers() {
+        return ResponseEntity.ok(serverService.getServersForCurrentUser());
+    }
+
+    @PostMapping
+    public ResponseEntity<ServerResponse> createServer(@RequestBody ServerRequest request) {
+        return ResponseEntity.ok(serverService.createServer(request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteServer(@PathVariable UUID id) {
+        serverService.deleteServer(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/join")
+    public ResponseEntity<Void> joinServer(@PathVariable UUID id) {
+        serverService.joinServer(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/leave")
+    public ResponseEntity<Void> leaveServer(@PathVariable UUID id) {
+        serverService.leaveServer(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/members")
+    public ResponseEntity<List<UserResponse>> getMembers(@PathVariable UUID id) {
+        return ResponseEntity.ok(serverService.getServerMembers(id));
+    }
+}

@@ -1,0 +1,104 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-ch-bg-deep p-4">
+  <div class="w-full max-w-sm rounded-2xl bg-ch-bg-dark p-8 shadow-2xl border border-ch-border animate-fadeIn">
+
+    <!-- Logo & Título -->
+    <div class="mb-6 text-center">
+      <div class="mb-3 flex justify-center">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-ch-brand shadow-brand-glow">
+          <lucide-icon name="message-square" [size]="36" class="text-white"></lucide-icon>
+        </div>
+      </div>
+      <h1 class="text-2xl font-bold text-ch-text-primary">ChatterHub</h1>
+      <p class="mt-1 text-sm text-ch-text-muted">
+        {{ mode() === 'login' ? 'Entre com seu usuário e senha' : 'Crie sua conta gratuitamente' }}
+      </p>
+    </div>
+
+    <!-- TABS -->
+    <div class="mb-6 flex rounded-lg bg-ch-bg-darker p-1 border border-ch-border">
+      <button type="button" (click)="setMode('login')"
+        class="flex-1 rounded-md py-2 text-sm font-semibold transition-colors"
+        [ngClass]="mode() === 'login' ? 'bg-ch-brand text-white shadow' : 'text-ch-text-muted hover:text-ch-text-primary'">
+        Entrar
+      </button>
+      <button type="button" (click)="setMode('register')"
+        class="flex-1 rounded-md py-2 text-sm font-semibold transition-colors"
+        [ngClass]="mode() === 'register' ? 'bg-ch-brand text-white shadow' : 'text-ch-text-muted hover:text-ch-text-primary'">
+        Criar Conta
+      </button>
+    </div>
+
+    <!-- FORMULÁRIO LOGIN -->
+    <form *ngIf="mode() === 'login'" (ngSubmit)="login()" class="flex flex-col gap-4">
+      <div>
+        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-ch-text-muted">Nome de Usuário</label>
+        <input type="text" [(ngModel)]="loginForm.username" name="username" required
+          placeholder="Seu nome de usuário" autocomplete="username"
+          class="w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none border border-ch-border focus:border-ch-brand transition-all" />
+      </div>
+
+      <div>
+        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-ch-text-muted">Senha</label>
+        <input type="password" [(ngModel)]="loginForm.password" name="password" required
+          placeholder="Sua senha" autocomplete="current-password"
+          class="w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none border border-ch-border focus:border-ch-brand transition-all" />
+      </div>
+
+      <!-- Manter Conectado -->
+      <label class="flex cursor-pointer items-center gap-2 select-none">
+        <input type="checkbox" [(ngModel)]="loginForm.remember" name="remember"
+          class="h-4 w-4 rounded accent-ch-brand" />
+        <span class="text-xs text-ch-text-muted">Manter conectado</span>
+      </label>
+
+      <p *ngIf="error()"
+        class="rounded-md bg-red-500/15 border border-red-500/20 px-3 py-2 text-xs text-red-400 font-medium">
+        {{ error() }}
+      </p>
+
+      <button type="submit" [disabled]="loading()"
+        class="mt-1 flex items-center justify-center gap-2 rounded-md bg-ch-brand py-2.5 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-50 shadow-brand-glow">
+        <span *ngIf="loading()">Entrando...</span>
+        <span *ngIf="!loading()">Entrar</span>
+      </button>
+    </form>
+
+    <!-- FORMULÁRIO CADASTRO -->
+    <form *ngIf="mode() === 'register'" (ngSubmit)="register()" class="flex flex-col gap-4">
+      <div>
+        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-ch-text-muted">
+          Nome de Usuário *
+        </label>
+        <input type="text" [(ngModel)]="registerForm.username" name="regUsername" required
+          placeholder="Mínimo 3 caracteres" autocomplete="username"
+          class="w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none border border-ch-border focus:border-ch-brand transition-all" />
+      </div>
+
+      <div>
+        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-ch-text-muted">Senha *</label>
+        <input type="password" [(ngModel)]="registerForm.password" name="regPassword" required
+          placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+          class="w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none border border-ch-border focus:border-ch-brand transition-all" />
+      </div>
+
+      <div>
+        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-ch-text-muted">Confirmar Senha *</label>
+        <input type="password" [(ngModel)]="registerForm.confirmPassword" name="confirmPassword" required
+          placeholder="Repita a senha" autocomplete="new-password"
+          class="w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none border border-ch-border focus:border-ch-brand transition-all" />
+      </div>
+
+      <p *ngIf="error()"
+        class="rounded-md bg-red-500/15 border border-red-500/20 px-3 py-2 text-xs text-red-400 font-medium">
+        {{ error() }}
+      </p>
+
+      <button type="submit" [disabled]="loading()"
+        class="mt-1 flex items-center justify-center gap-2 rounded-md bg-ch-brand py-2.5 text-sm font-bold text-white transition-all hover:brightness-110 disabled:opacity-50 shadow-brand-glow">
+        <span *ngIf="loading()">Criando conta...</span>
+        <span *ngIf="!loading()">Criar Conta</span>
+      </button>
+    </form>
+
+  </div>
+</div>

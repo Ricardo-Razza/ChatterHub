@@ -1,0 +1,32 @@
+<!-- Tela de Login (quando não autenticado) -->
+<app-login *ngIf="!authService.isLoggedIn()" />
+
+<!-- App Principal (quando autenticado) -->
+<div *ngIf="authService.isLoggedIn()"
+     class="h-screen w-screen overflow-hidden bg-ch-bg-deep text-ch-text-primary antialiased">
+
+  <!-- Painel de DMs (overlay) -->
+  <div *ngIf="showDmPanel"
+    class="absolute inset-0 z-40 flex"
+    (click)="toggleDmPanel()">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div class="relative z-50 ml-[68px] h-full w-full max-w-4xl shadow-2xl"
+      (click)="$event.stopPropagation()">
+      <app-dm-panel class="h-full" />
+    </div>
+  </div>
+
+  <div class="grid h-full grid-cols-[68px_260px_1fr] max-md:grid-cols-[68px_1fr] max-sm:grid-cols-[1fr]">
+    <!-- Sidebar de servidores com botão DM -->
+    <app-server-sidebar class="h-full max-sm:hidden"
+      [dmUnread]="dmUnread()"
+      (openDm)="toggleDmPanel()" />
+    <app-channel-sidebar class="h-full max-md:hidden" />
+    <main class="h-full min-w-0">
+      <app-main-area />
+    </main>
+  </div>
+</div>
+
+<!-- Container de toasts globais -->
+<app-toast-container />

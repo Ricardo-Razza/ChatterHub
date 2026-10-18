@@ -1,0 +1,76 @@
+<div
+  class="group relative flex aspect-video w-full max-w-full max-h-full items-center justify-center overflow-hidden rounded-xl
+         bg-ch-bg-dark ring-2 transition-all duration-150 border border-ch-border/50 shadow-card"
+  [ngClass]="user.isSpeaking ? 'ring-ch-success shadow-speaking' : 'ring-transparent'"
+>
+  <!-- Câmera ligada: stream de vídeo real -->
+  <div
+    *ngIf="user.isCameraOn; else avatarView"
+    class="relative flex h-full w-full items-center justify-center bg-black"
+  >
+    <video
+      #cameraVideo
+      autoplay
+      playsinline
+      [muted]="user.id === voiceService.currentUserId()"
+      class="h-full w-full object-cover"
+    ></video>
+  </div>
+
+  <!-- Câmera desligada: avatar centralizado -->
+  <ng-template #avatarView>
+    <img
+      [src]="user.avatarUrl"
+      [alt]="user.username"
+      class="rounded-full object-cover shadow-md"
+      [ngClass]="featured ? 'h-24 w-24 md:h-32 md:w-32' : 'h-14 w-14 md:h-18 md:w-18'"
+    />
+  </ng-template>
+
+  <!-- Rodapé com nome e ícones de status -->
+  <div class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 py-2 z-10">
+    <span class="truncate text-xs md:text-sm font-medium text-white drop-shadow">{{ user.username }}</span>
+    <div class="flex shrink-0 items-center gap-1.5">
+      <!-- Volume individual (só para os outros participantes) -->
+      <input
+        *ngIf="user.id !== voiceService.currentUserId()"
+        type="range" min="0" max="100"
+        [value]="voiceService.userVolume(user.id)"
+        (input)="onVolume($any($event.target).value)"
+        class="hidden h-1 w-16 cursor-pointer accent-ch-brand group-hover:block"
+        [title]="'Volume de ' + user.username + ': ' + voiceService.userVolume(user.id) + '%'"
+        aria-label="Volume do participante"
+      />
+      <!-- Qualidade da conexão -->
+      <span
+        *ngIf="user.id !== voiceService.currentUserId() && stats() as st"
+        class="h-2 w-2 rounded-full"
+        [ngClass]="{
+          'bg-ch-success': st.level === 'good',
+          'bg-ch-warning': st.level === 'ok',
+          'bg-ch-danger': st.level === 'poor',
+          'bg-ch-text-muted': st.level === 'unknown'
+        }"
+        [title]="qualityTitle()"
+      ></span>
+      <lucide-icon
+        *ngIf="user.isDeafened"
+        name="headphones"
+        [size]="14"
+        class="text-ch-danger"
+      ></lucide-icon>
+      <lucide-icon
+        *ngIf="user.isSharingScreen"
+        name="screen-share"
+        [size]="14"
+        class="text-ch-brand-light"
+      ></lucide-icon>
+      <lucide-icon
+        *ngIf="user.isMuted"
+        name="mic-off"
+        [size]="14"
+        class="text-ch-danger"
+      ></lucide-icon>
+    </div>
+  </div>
+</div>

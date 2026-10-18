@@ -1,0 +1,88 @@
+<div *ngIf="voiceService.pickerOpen()"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+  (click)="cancel()">
+  <div class="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-ch-border bg-ch-bg-dark shadow-2xl"
+    (click)="$event.stopPropagation()" role="dialog" aria-label="Escolher o que compartilhar">
+
+    <header class="flex items-center justify-between border-b border-ch-border px-5 py-4">
+      <h2 class="text-lg font-bold text-ch-text-primary">Compartilhar tela</h2>
+      <button type="button" (click)="cancel()" class="text-ch-text-muted hover:text-white" aria-label="Fechar">
+        <lucide-icon name="x" [size]="20"></lucide-icon>
+      </button>
+    </header>
+
+    <div class="flex gap-2 px-5 pt-4">
+      <button type="button" (click)="setTab('window')"
+        class="rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors"
+        [ngClass]="tab() === 'window' ? 'bg-ch-brand text-white' : 'bg-ch-bg-light text-ch-text-muted hover:text-white'">
+        Aplicativos
+      </button>
+      <button type="button" (click)="setTab('screen')"
+        class="rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors"
+        [ngClass]="tab() === 'screen' ? 'bg-ch-brand text-white' : 'bg-ch-bg-light text-ch-text-muted hover:text-white'">
+        Telas
+      </button>
+    </div>
+
+    <div class="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-5 sm:grid-cols-3">
+      <button *ngFor="let source of visibleSources()" type="button" (click)="select(source)"
+        class="group flex flex-col gap-2 rounded-xl border-2 p-2 text-left transition-colors"
+        [ngClass]="selectedId() === source.id ? 'border-ch-brand bg-ch-brand/10' : 'border-transparent bg-ch-bg-light hover:border-ch-border'">
+        <img [src]="source.thumbnail" [alt]="source.name" class="aspect-video w-full rounded-lg bg-black object-contain" />
+        <span class="truncate text-xs font-medium text-ch-text-primary">{{ source.name }}</span>
+      </button>
+      <p *ngIf="visibleSources().length === 0" class="col-span-full py-8 text-center text-sm text-ch-text-muted">
+        Nada para compartilhar nesta aba.
+      </p>
+    </div>
+
+    <div class="grid gap-3 border-t border-ch-border px-5 py-4 sm:grid-cols-3">
+      <label class="flex flex-col gap-1 text-xs font-semibold uppercase text-ch-text-muted">
+        Áudio da transmissão
+        <select [value]="audioPid()" (change)="onAudioChange($any($event.target).value)"
+          [disabled]="!voiceService.supportsAppAudio"
+          class="rounded-lg border border-ch-border bg-ch-bg-darker px-3 py-2 text-sm normal-case text-ch-text-primary outline-none focus:border-ch-brand">
+          <option value="">Sem áudio</option>
+          <option *ngFor="let app of voiceService.pickerApps()" [value]="app.pid">{{ app.title }}</option>
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-1 text-xs font-semibold uppercase text-ch-text-muted">
+        Qualidade
+        <select [value]="voiceService.screenQuality()" (change)="onQuality($any($event.target).value)"
+          class="rounded-lg border border-ch-border bg-ch-bg-darker px-3 py-2 text-sm normal-case text-ch-text-primary outline-none focus:border-ch-brand">
+          <option *ngFor="let p of voiceService.screenPresets" [value]="p.id">{{ p.label }}</option>
+        </select>
+      </label>
+
+      <label class="flex flex-col gap-1 text-xs font-semibold uppercase text-ch-text-muted">
+        Conteúdo
+        <select [value]="voiceService.screenContent()" (change)="onContent($any($event.target).value)"
+          class="rounded-lg border border-ch-border bg-ch-bg-darker px-3 py-2 text-sm normal-case text-ch-text-primary outline-none focus:border-ch-brand">
+          <option value="motion">Jogo / vídeo (prioriza fluidez)</option>
+          <option value="detail">Texto / apresentação (prioriza nitidez)</option>
+        </select>
+      </label>
+
+      <p class="text-xs text-ch-text-muted sm:col-span-3">
+        <ng-container *ngIf="voiceService.supportsAppAudio; else noAppAudio">
+          Só o áudio do aplicativo escolhido é enviado. A call (Discord, ChatterHub) e o restante do sistema não vão para a transmissão.
+        </ng-container>
+        <ng-template #noAppAudio>
+          Este sistema não suporta captura de áudio por aplicativo (requer Windows 10 2004 ou superior). A tela será enviada sem áudio.
+        </ng-template>
+      </p>
+    </div>
+
+    <footer class="flex justify-end gap-2 border-t border-ch-border px-5 py-4">
+      <button type="button" (click)="cancel()"
+        class="rounded-lg bg-ch-bg-light px-4 py-2 text-sm font-semibold text-ch-text-primary hover:bg-ch-bg-lighter">
+        Cancelar
+      </button>
+      <button type="button" (click)="confirm()" [disabled]="!selectedId()"
+        class="rounded-lg bg-ch-brand px-5 py-2 text-sm font-bold text-white shadow-brand-glow hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
+        Transmitir
+      </button>
+    </footer>
+  </div>
+</div>

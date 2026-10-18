@@ -1,0 +1,73 @@
+<div class="flex h-full w-full gap-3 p-3 min-h-0">
+
+  <!-- LAYOUT COM COMPARTILHAMENTO DE TELA: vídeo em destaque + grade lateral -->
+  <ng-container *ngIf="featuredUser(); else normalGrid">
+    <div class="flex h-full w-full gap-3 flex-col md:flex-row min-h-0">
+
+      <!-- Tela compartilhada em destaque com stream de vídeo real -->
+      <div class="flex-1 min-h-0 flex items-center justify-center">
+        <div class="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl
+                    bg-black ring-2 ring-ch-brand shadow-brand-glow">
+          <video
+            #screenVideo
+            autoplay
+            playsinline
+            class="h-full w-full object-contain"
+          ></video>
+
+          <span class="absolute left-3 top-3 rounded bg-black/60 px-2 py-1 text-xs font-medium text-white flex items-center gap-1.5 backdrop-blur-sm">
+            <span class="h-2 w-2 rounded-full bg-ch-danger animate-pulse"></span>
+            Ao vivo ({{ featuredUser()?.username }})
+          </span>
+
+          <!-- Indicador de carregamento enquanto o stream WebRTC conecta -->
+          <div
+            *ngIf="!voiceService.activeScreenStream()"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 text-ch-text-muted"
+          >
+            <div class="h-8 w-8 animate-spin rounded-full border-2 border-ch-brand border-t-transparent"></div>
+            <span class="text-xs font-medium text-white">Carregando transmissão de {{ featuredUser()?.username }}...</span>
+          </div>
+
+          <!-- Controle de Volume da Transmissão / Tela Compartilhada -->
+          <div class="absolute bottom-3 right-3 z-10 flex items-center gap-2 rounded-lg bg-black/75 px-3 py-1.5 backdrop-blur-md border border-white/10 shadow-lg text-white">
+            <button
+              type="button"
+              (click)="toggleMuteScreen()"
+              class="text-ch-text-muted hover:text-white transition-colors focus:outline-none flex items-center"
+              [title]="voiceService.screenShareVolume() === 0 ? 'Desmutar áudio da tela' : 'Mutar áudio da tela'"
+            >
+              <lucide-icon [name]="voiceService.screenShareVolume() === 0 ? 'volume-x' : 'volume-2'" [size]="16"></lucide-icon>
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              [value]="voiceService.screenShareVolume()"
+              (input)="onScreenVolumeChange($event)"
+              class="w-20 sm:w-28 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-ch-brand"
+            />
+            <span class="text-[11px] font-semibold tabular-nums text-ch-text-primary min-w-[2rem] text-right">
+              {{ voiceService.screenShareVolume() }}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grade lateral com os participantes -->
+      <div class="flex md:flex-col gap-2 overflow-auto shrink-0 w-full md:w-64 max-h-40 md:max-h-full items-center justify-center">
+        <app-user-card *ngFor="let user of otherParticipants()" [user]="user" class="w-44 md:w-full shrink-0" />
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- LAYOUT NORMAL: grade de participantes lado a lado -->
+  <ng-template #normalGrid>
+    <div
+      class="grid h-full w-full gap-4 items-center justify-center auto-rows-fr min-h-0"
+      [ngClass]="gridLayoutClass()"
+    >
+      <app-user-card *ngFor="let user of voiceService.participants()" [user]="user" />
+    </div>
+  </ng-template>
+</div>

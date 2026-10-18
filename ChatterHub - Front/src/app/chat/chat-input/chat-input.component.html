@@ -1,0 +1,68 @@
+<div class="shrink-0 px-4 pb-6">
+
+  <!-- Preview de anexo -->
+  <div *ngIf="attachment()" class="mb-2 flex items-center gap-3 rounded-xl bg-ch-bg-dark border border-ch-border p-2 animate-fadeIn max-w-sm">
+    <img *ngIf="attachment()?.type === 'image'" [src]="attachment()?.url" alt="Preview" class="h-12 w-12 rounded-lg object-cover" />
+    <div *ngIf="attachment()?.type === 'file'" class="flex h-12 w-12 items-center justify-center rounded-lg bg-ch-bg-light text-ch-brand-light">
+      <lucide-icon name="paperclip" [size]="20" />
+    </div>
+    <div class="min-w-0 flex-1">
+      <p class="truncate text-xs font-semibold text-ch-text-primary">{{ attachment()?.name }}</p>
+      <span class="text-[10px] text-ch-text-muted uppercase">{{ attachment()?.type }}</span>
+    </div>
+    <button type="button" (click)="removeAttachment()" class="text-ch-text-muted hover:text-ch-danger transition-colors p-1" title="Remover anexo">
+      <lucide-icon name="x" [size]="16" />
+    </button>
+  </div>
+
+  <div class="flex items-center gap-3 rounded-xl bg-ch-bg-light px-4 py-2.5 shadow-sm border"
+    [ngClass]="editingContent !== null ? 'border-ch-brand/50' : 'border-ch-border/50'">
+
+    <!-- Input escondido de arquivo -->
+    <input #fileInput type="file" (change)="onFileSelected($event)" class="hidden" />
+
+    <!-- Botão de anexar arquivo -->
+    <button
+      *ngIf="editingContent === null"
+      type="button"
+      (click)="triggerFileInput()"
+      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ch-text-muted transition-colors hover:text-ch-text-primary hover:bg-ch-bg-medium"
+      title="Anexar arquivo ou imagem"
+      aria-label="Anexar arquivo"
+    >
+      <lucide-icon name="plus-circle" [size]="18" />
+    </button>
+
+    <!-- Campo de texto -->
+    <input
+      #inputEl
+      type="text"
+      [(ngModel)]="draft"
+      (keydown)="onKeydown($event)"
+      [placeholder]="editingContent !== null ? 'Editar mensagem (Enter para salvar, Esc para cancelar)' : 'Conversar em #' + channelName"
+      class="flex-1 bg-transparent text-[15px] text-ch-text-primary placeholder:text-ch-text-muted outline-none"
+    />
+
+    <!-- Ícones à direita -->
+    <div class="flex shrink-0 items-center gap-3 text-ch-text-muted">
+      <button
+        *ngIf="editingContent === null"
+        type="button"
+        (click)="triggerFileInput()"
+        class="transition-colors hover:text-ch-text-primary"
+        title="Enviar imagem / documento"
+        aria-label="Anexar imagem"
+      >
+        <lucide-icon name="paperclip" [size]="20"></lucide-icon>
+      </button>
+      <button
+        type="button"
+        (click)="submit()"
+        class="text-ch-brand transition-colors hover:text-ch-brand-light"
+        aria-label="Enviar mensagem"
+      >
+        <lucide-icon [name]="editingContent !== null ? 'check' : 'send'" [size]="20"></lucide-icon>
+      </button>
+    </div>
+  </div>
+</div>

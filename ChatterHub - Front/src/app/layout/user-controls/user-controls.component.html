@@ -1,0 +1,67 @@
+<div class="flex h-[52px] shrink-0 items-center gap-2 bg-ch-bg-dark/95 border-t border-ch-border px-2">
+
+  <!-- Avatar + nome -->
+  <button
+    type="button"
+    (click)="openSettings()"
+    class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-ch-bg-light"
+  >
+    <div class="relative shrink-0">
+      <img
+        [src]="authService.currentUser().avatarUrl"
+        [alt]="authService.currentUser().username"
+        class="h-8 w-8 rounded-full"
+      />
+      <span
+        class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-ch-bg-dark"
+        [ngClass]="{
+          'bg-ch-success': authService.currentUser().status === 'online',
+          'bg-ch-warning': authService.currentUser().status === 'idle',
+          'bg-ch-danger': authService.currentUser().status === 'dnd',
+          'bg-ch-text-muted': authService.currentUser().status === 'offline'
+        }"
+      ></span>
+    </div>
+    <div class="min-w-0 text-left">
+      <div class="flex items-center gap-1.5">
+        <p class="truncate text-sm font-semibold text-ch-text-primary">{{ authService.currentUser().username }}</p>
+        <span *ngIf="authService.isAdmin()" class="rounded bg-ch-brand px-1 text-[9px] font-bold text-white uppercase leading-tight">ADM</span>
+      </div>
+      <p class="truncate text-xs text-ch-text-muted">Configurações</p>
+    </div>
+  </button>
+
+  <!-- Botões de ação -->
+  <div class="flex shrink-0 items-center gap-0.5">
+    <button
+      type="button"
+      (click)="toggleMute()"
+      class="flex h-8 w-8 items-center justify-center rounded-lg text-ch-text-muted transition-colors hover:bg-ch-bg-light hover:text-ch-text-primary"
+      [ngClass]="{ 'text-ch-danger hover:text-ch-danger': authService.currentUser().isMuted }"
+      aria-label="Mutar microfone"
+    >
+      <lucide-icon [name]="authService.currentUser().isMuted ? 'mic-off' : 'mic'" [size]="18"></lucide-icon>
+    </button>
+
+    <button
+      type="button"
+      (click)="toggleDeafen()"
+      class="flex h-8 w-8 items-center justify-center rounded-lg text-ch-text-muted transition-colors hover:bg-ch-bg-light hover:text-ch-text-primary"
+      [ngClass]="{ 'text-ch-danger hover:text-ch-danger': authService.currentUser().isDeafened }"
+      aria-label="Silenciar áudio"
+    >
+      <lucide-icon name="headphones" [size]="18"></lucide-icon>
+    </button>
+
+    <button
+      type="button"
+      (click)="openSettings()"
+      class="flex h-8 w-8 items-center justify-center rounded-lg text-ch-text-muted transition-colors hover:bg-ch-bg-light hover:text-ch-text-primary"
+      aria-label="Configurações"
+    >
+      <lucide-icon name="settings" [size]="18"></lucide-icon>
+    </button>
+  </div>
+</div>
+
+<app-settings-modal />

@@ -1,0 +1,101 @@
+<div
+  class="group relative flex gap-4 rounded-lg px-4 py-0.5 transition-colors"
+  [ngClass]="{
+    'mt-0': grouped,
+    'mt-[17px]': !grouped,
+    'hover:bg-ch-bg-light/50': !deleted,
+    'opacity-60': deleted
+  }"
+  (mouseenter)="showActions = true"
+  (mouseleave)="showActions = false; confirmingDelete = false"
+>
+  <!-- Avatar ou espaço agrupado -->
+  <div class="w-10 shrink-0 pt-0.5">
+    <img
+      *ngIf="!grouped"
+      [src]="avatarUrl"
+      [alt]="authorName"
+      class="h-10 w-10 rounded-full object-cover"
+    />
+    <span
+      *ngIf="grouped"
+      class="hidden w-10 select-none text-[10px] text-ch-text-muted group-hover:inline-block"
+      [title]="formattedDate"
+    >
+      {{ formattedTime }}
+    </span>
+  </div>
+
+  <!-- Conteúdo -->
+  <div class="min-w-0 flex-1">
+    <div *ngIf="!grouped" class="flex items-baseline gap-2">
+      <span class="text-[15px] font-semibold text-ch-text-primary hover:underline cursor-pointer">
+        {{ authorName }}
+      </span>
+      <span class="text-xs text-ch-text-muted" [title]="formattedDate">{{ formattedTime }}</span>
+    </div>
+
+    <!-- Mensagem deletada -->
+    <p *ngIf="deleted"
+      class="italic text-ch-text-muted text-[14px] leading-[1.375rem]">
+      [Mensagem deletada]
+    </p>
+
+    <!-- Mensagem normal -->
+    <p *ngIf="!deleted && content"
+      class="whitespace-pre-wrap break-words text-[15px] leading-[1.375rem] text-ch-text-primary">
+      {{ content }}
+      <span *ngIf="edited" class="ml-1 text-[11px] text-ch-text-muted italic">(editado)</span>
+    </p>
+
+    <!-- Anexo de imagem -->
+    <div *ngIf="!deleted && attachmentUrl && attachmentType === 'image'" class="mt-2 max-w-md overflow-hidden rounded-xl border border-ch-border/50">
+      <img [src]="attachmentUrl" [alt]="attachmentName || 'Imagem anexada'" class="max-h-80 w-auto rounded-lg object-contain cursor-pointer hover:opacity-95 transition-opacity" />
+    </div>
+
+    <!-- Anexo de arquivo/documento -->
+    <div *ngIf="!deleted && attachmentUrl && attachmentType === 'file'" class="mt-2 inline-flex items-center gap-3 rounded-xl bg-ch-bg-darker border border-ch-border px-3 py-2 text-xs">
+      <lucide-icon name="paperclip" [size]="18" class="text-ch-brand-light shrink-0" />
+      <span class="font-medium text-ch-text-primary truncate max-w-xs">{{ attachmentName || 'Arquivo anexado' }}</span>
+      <a [href]="attachmentUrl" [download]="attachmentName || 'arquivo'" class="ml-2 rounded bg-ch-brand px-2 py-1 font-bold text-white hover:brightness-110 transition-all">
+        Baixar
+      </a>
+    </div>
+
+    <!-- Confirmação de delete -->
+    <div *ngIf="confirmingDelete"
+      class="mt-1 flex items-center gap-2 rounded-md bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs">
+      <lucide-icon name="alert-triangle" [size]="14" class="text-ch-danger shrink-0" />
+      <span class="text-ch-text-muted">Deletar esta mensagem?</span>
+      <button type="button" (click)="confirmDelete()"
+        class="ml-1 font-bold text-ch-danger hover:text-red-400 transition-colors">Sim</button>
+      <button type="button" (click)="cancelDelete()"
+        class="font-medium text-ch-text-muted hover:text-ch-text-primary transition-colors">Não</button>
+    </div>
+  </div>
+
+  <!-- Botões de ação (hover) -->
+  <div
+    *ngIf="showActions && !deleted && !confirmingDelete"
+    class="absolute right-3 top-0 -translate-y-1/2 flex items-center gap-1 rounded-lg border border-ch-border bg-ch-bg-dark px-1 py-0.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+  >
+    <button
+      *ngIf="isOwn"
+      type="button"
+      (click)="startEdit()"
+      class="flex h-6 w-6 items-center justify-center rounded text-ch-text-muted hover:text-ch-text-primary hover:bg-ch-bg-light transition-colors"
+      title="Editar mensagem"
+    >
+      <lucide-icon name="pencil" [size]="13" />
+    </button>
+    <button
+      *ngIf="canDelete"
+      type="button"
+      (click)="requestDelete()"
+      class="flex h-6 w-6 items-center justify-center rounded text-ch-text-muted hover:text-ch-danger hover:bg-ch-bg-light transition-colors"
+      title="Deletar mensagem"
+    >
+      <lucide-icon name="trash-2" [size]="13" />
+    </button>
+  </div>
+</div>

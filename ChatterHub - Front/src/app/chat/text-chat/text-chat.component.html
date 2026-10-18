@@ -1,0 +1,76 @@
+<div class="flex h-full min-w-0 flex-col">
+
+  <!-- Header do canal -->
+  <header class="flex h-14 shrink-0 items-center gap-2 border-b border-ch-border px-4 shadow-sm">
+    <lucide-icon name="hash" [size]="20" class="text-ch-text-muted"></lucide-icon>
+    <h1 class="font-semibold text-ch-text-primary">{{ channelService.activeChannel()?.name }}</h1>
+    <div class="mx-2 h-6 w-px bg-ch-border"></div>
+    <p class="hidden truncate text-sm text-ch-text-muted sm:block">
+      Bem-vindo(a) ao canal! Fiquem à vontade para conversar.
+    </p>
+    <div class="ml-auto flex items-center gap-4 text-ch-text-muted">
+      <button type="button" class="hover:text-ch-text-primary transition-colors" aria-label="Membros">
+        <lucide-icon name="users" [size]="20"></lucide-icon>
+      </button>
+      <div class="relative hidden md:block">
+        <lucide-icon name="search" [size]="15"
+          class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ch-text-muted">
+        </lucide-icon>
+        <input type="text" placeholder="Pesquisar"
+          class="w-36 rounded-lg bg-ch-bg-dark py-1.5 pl-7 pr-2 text-sm outline-none placeholder:text-ch-text-muted focus:ring-2 focus:ring-ch-brand/50 transition-all" />
+      </div>
+    </div>
+  </header>
+
+  <!-- Loading de mais mensagens -->
+  <div *ngIf="chatService.isLoading()" class="flex justify-center py-3 shrink-0">
+    <div class="flex items-center gap-2 text-xs text-ch-text-muted">
+      <div class="h-3 w-3 animate-spin rounded-full border-2 border-ch-brand border-t-transparent"></div>
+      Carregando mensagens...
+    </div>
+  </div>
+  <div *ngIf="!chatService.hasMore() && !chatService.isLoading()" class="flex justify-center py-3 shrink-0">
+    <p class="text-xs text-ch-text-muted italic">Início da conversa em #{{ channelService.activeChannel()?.name }}</p>
+  </div>
+
+  <!-- Lista de mensagens com scroll infinito -->
+  <div #scrollContainer class="flex-1 overflow-y-auto pb-4" (scroll)="onScroll($event)">
+    <div class="flex flex-col pt-2">
+      <app-message
+        *ngFor="let message of chatService.messagesForActiveChannel()"
+        [id]="message.id"
+        [avatarUrl]="message.authorAvatarUrl"
+        [authorId]="message.authorId"
+        [authorName]="message.authorName"
+        [createdAt]="message.createdAt"
+        [content]="message.content"
+        [grouped]="!!message.grouped"
+        [edited]="!!message.edited"
+        [deleted]="!!message.deleted"
+        [attachmentUrl]="message.attachmentUrl"
+        [attachmentType]="message.attachmentType"
+        [attachmentName]="message.attachmentName"
+        (editRequested)="onEditRequested($event)"
+      />
+    </div>
+    <div #scrollAnchor></div>
+  </div>
+
+  <!-- Banner de edição ativa -->
+  <div *ngIf="editingMessage()"
+    class="shrink-0 mx-4 mb-1 flex items-center gap-2 rounded-lg bg-ch-brand/10 border border-ch-brand/30 px-3 py-1.5 text-xs text-ch-brand-light">
+    <lucide-icon name="pencil" [size]="13" />
+    <span>Editando mensagem</span>
+    <button type="button" (click)="cancelEdit()"
+      class="ml-auto text-ch-text-muted hover:text-ch-text-primary transition-colors">
+      <lucide-icon name="x" [size]="14" />
+    </button>
+  </div>
+
+  <!-- Campo de digitação -->
+  <app-chat-input
+    [channelName]="channelService.activeChannel()?.name ?? ''"
+    [editingContent]="editingMessage()?.content ?? null"
+    (send)="onSend($event)"
+  />
+</div>

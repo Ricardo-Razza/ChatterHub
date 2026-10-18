@@ -1,0 +1,7 @@
+{
+  "name": "chatterhub-e2e",
+  "private": true,
+  "description": "Testes ponta a ponta (Chrome real + WebRTC). Requer API em :8080, front em :4200 e Chrome instalado.",
+  "scripts": { "voice": "node voice.e2e.js", "desktop": "node desktop.e2e.js" },
+  "devDependencies": { "playwright-core": "^1.48.0" }
+}

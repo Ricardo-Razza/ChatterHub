@@ -1,0 +1,76 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-chatterhubdb}
+      MYSQL_USER: ${DB_USER:-chatterhub}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?defina DB_ROOT_PASSWORD no .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Sem "ports": o banco só é acessível pela rede interna do compose.
+
+  api:
+    build:
+      context: "./ChatterHub - API"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-chatterhubdb}
+      DB_USER: ${DB_USER:-chatterhub}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?defina CORS_ALLOWED_ORIGINS no .env}
+      TURN_SECRET: ${TURN_SECRET:-}
+      TURN_URLS: ${TURN_URLS:-}
+      STUN_URLS: ${STUN_URLS:-stun:stun.l.google.com:19302}
+
+  front:
+    build:
+      context: "./ChatterHub - Front"
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Coloque um proxy com TLS (Caddy/nginx/aaPanel) na frente e aponte para esta porta.
+      - "3001:80"
+
+  # Relay TURN para quem não consegue conexão direta (NAT simétrico, 4G, rede corporativa).
+  # Precisa de network_mode host por causa da faixa de portas UDP do relay.
+  coturn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - "-n"
+      - "--log-file=stdout"
+      - "--listening-port=3478"
+      - "--min-port=49160"
+      - "--max-port=49200"
+      - "--fingerprint"
+      - "--use-auth-secret"
+      - "--static-auth-secret=${TURN_SECRET:?defina TURN_SECRET no .env}"
+      - "--realm=${TURN_REALM:-chatterhub}"
+      - "--external-ip=${TURN_EXTERNAL_IP}"
+      - "--no-cli"
+      - "--no-multicast-peers"
+      # Impede usar o relay para alcançar a rede interna do servidor
+      - "--denied-peer-ip=0.0.0.0-0.255.255.255"
+      - "--denied-peer-ip=10.0.0.0-10.255.255.255"
+      - "--denied-peer-ip=127.0.0.0-127.255.255.255"
+      - "--denied-peer-ip=169.254.0.0-169.254.255.255"
+      - "--denied-peer-ip=172.16.0.0-172.31.255.255"
+      - "--denied-peer-ip=192.168.0.0-192.168.255.255"
+
+volumes:
+  mysql_data:

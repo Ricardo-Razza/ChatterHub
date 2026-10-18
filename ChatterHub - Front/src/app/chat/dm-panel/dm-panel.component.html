@@ -1,0 +1,105 @@
+<div class="flex h-full">
+
+  <!-- Sidebar de Conversas DM -->
+  <aside class="flex w-[260px] shrink-0 flex-col border-r border-ch-border bg-ch-bg-dark">
+    <div class="flex h-14 items-center border-b border-ch-border px-4 font-semibold text-ch-text-primary">
+      <lucide-icon name="message-circle" [size]="18" class="mr-2 text-ch-text-muted" />
+      Mensagens Diretas
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-2 py-2">
+      <!-- Sem conversas -->
+      <div *ngIf="dmService.conversations().length === 0"
+        class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <lucide-icon name="message-circle" [size]="36" class="text-ch-text-muted opacity-30" />
+        <p class="text-xs text-ch-text-muted">Nenhuma conversa ainda</p>
+      </div>
+
+      <!-- Lista de conversas -->
+      <button
+        *ngFor="let conv of dmService.conversations()"
+        type="button"
+        (click)="selectConversation(conv.userId)"
+        class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors"
+        [ngClass]="dmService.activeDmUserId() === conv.userId
+          ? 'bg-ch-brand/20 text-ch-text-primary'
+          : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'"
+      >
+        <div class="relative shrink-0">
+          <img [src]="conv.avatarUrl" [alt]="conv.username" class="h-9 w-9 rounded-full object-cover" />
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between">
+            <p class="truncate text-sm font-semibold text-ch-text-primary">{{ conv.username }}</p>
+            <span *ngIf="conv.unreadCount > 0"
+              class="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ch-danger px-1 text-[11px] font-bold text-white">
+              {{ conv.unreadCount }}
+            </span>
+          </div>
+          <p class="truncate text-xs text-ch-text-muted">{{ conv.lastMessage }}</p>
+        </div>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Área de Chat -->
+  <div class="flex flex-1 flex-col min-w-0">
+
+    <!-- Sem conversa selecionada -->
+    <div *ngIf="!dmService.activeDmUserId()"
+      class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+      <lucide-icon name="message-circle" [size]="56" class="text-ch-text-muted opacity-20" />
+      <p class="text-sm text-ch-text-muted">Selecione uma conversa ao lado</p>
+    </div>
+
+    <!-- Conversa ativa -->
+    <ng-container *ngIf="dmService.activeDmUserId()">
+      <!-- Header -->
+      <header class="flex h-14 shrink-0 items-center gap-3 border-b border-ch-border px-4 shadow-sm">
+        <img *ngIf="activeConversation" [src]="activeConversation.avatarUrl"
+          [alt]="activeConversation.username" class="h-8 w-8 rounded-full" />
+        <span class="font-semibold text-ch-text-primary">{{ activeConversation?.username }}</span>
+      </header>
+
+      <!-- Mensagens -->
+      <div class="flex-1 overflow-y-auto p-4">
+        <div *ngIf="dmService.isLoading()" class="flex justify-center py-4">
+          <div class="h-5 w-5 animate-spin rounded-full border-2 border-ch-brand border-t-transparent"></div>
+        </div>
+        <div *ngFor="let msg of dmService.messages()"
+          class="mb-3 flex gap-3"
+          [ngClass]="isOwn(msg.senderId) ? 'flex-row-reverse' : ''">
+          <img *ngIf="!isOwn(msg.senderId)" [src]="msg.senderAvatarUrl" [alt]="msg.senderName"
+            class="h-8 w-8 shrink-0 rounded-full object-cover" />
+          <div class="max-w-[70%] rounded-2xl px-4 py-2 text-sm"
+            [ngClass]="isOwn(msg.senderId)
+              ? 'rounded-tr-none bg-ch-brand text-white'
+              : 'rounded-tl-none bg-ch-bg-light text-ch-text-primary'">
+            <p class="break-words">{{ msg.content }}</p>
+            <p class="mt-1 text-right text-[10px] opacity-60">
+              {{ msg.createdAt | date:'HH:mm' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="shrink-0 px-4 pb-6">
+        <div class="flex items-center gap-3 rounded-xl bg-ch-bg-light border border-ch-border/50 px-4 py-2.5">
+          <input
+            type="text"
+            [(ngModel)]="draft"
+            (keydown)="onKeydown($event)"
+            [placeholder]="'Mensagem para ' + (activeConversation?.username ?? '')"
+            class="flex-1 bg-transparent text-[15px] text-ch-text-primary placeholder:text-ch-text-muted outline-none"
+          />
+          <button type="button" (click)="sendMessage()"
+            class="text-ch-brand hover:text-ch-brand-light transition-colors">
+            <lucide-icon name="send" [size]="20" />
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+</div>

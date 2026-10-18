@@ -71,6 +71,31 @@ class VoiceUnitTests {
     }
 
     @Test
+    void liveKitTokenCarriesRoomGrantAndIsSignedWithTheSecret() {
+        String secret = "0123456789abcdef0123456789abcdef0123";
+        var svc = new com.api.ChatterHub.voice.LiveKitTokenService("ws://lk:7880", "devkey", secret, 600);
+        var out = svc.tokenFor("room-1", "user-1", "Alice").orElseThrow();
+
+        var claims = io.jsonwebtoken.Jwts.parser()
+                .verifyWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .build().parseSignedClaims(out.get("token")).getPayload();
+
+        assertEquals("devkey", claims.getIssuer());
+        assertEquals("user-1", claims.getSubject());
+        Map<?, ?> video = claims.get("video", Map.class);
+        assertEquals("room-1", video.get("room"));
+        assertEquals(true, video.get("roomJoin"));
+        assertEquals("ws://lk:7880", out.get("url"));
+    }
+
+    @Test
+    void liveKitDisabledWithoutConfigAndRejectsWeakSecret() {
+        assertTrue(new com.api.ChatterHub.voice.LiveKitTokenService("", "", "", 600).tokenFor("r", "u", "n").isEmpty());
+        assertThrows(IllegalStateException.class,
+                () -> new com.api.ChatterHub.voice.LiveKitTokenService("ws://x", "k", "curto", 600));
+    }
+
+    @Test
     void withoutTurnSecretOnlyStunIsReturned() {
         IceConfigService svc = new IceConfigService("stun:s.example:3478", "turn:t.example:3478", "", 3600);
         assertEquals(1, svc.iceServersFor("x").size());

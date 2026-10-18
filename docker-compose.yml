@@ -34,6 +34,10 @@ services:
       TURN_SECRET: ${TURN_SECRET:-}
       TURN_URLS: ${TURN_URLS:-}
       STUN_URLS: ${STUN_URLS:-stun:stun.l.google.com:19302}
+      # SFU opcional: com as 3 variáveis a mídia passa pelo LiveKit; vazio = malha P2P
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
 
   front:
     build:
@@ -71,6 +75,23 @@ services:
       - "--denied-peer-ip=169.254.0.0-169.254.255.255"
       - "--denied-peer-ip=172.16.0.0-172.31.255.255"
       - "--denied-peer-ip=192.168.0.0-192.168.255.255"
+
+  # SFU (opcional, perfil "sfu"): docker compose --profile sfu up -d
+  # Exponha o 7880 por um proxy TLS (wss://) e libere 7881/tcp e 50000-50100/udp no firewall.
+  livekit:
+    image: livekit/livekit-server:v1.13
+    profiles: ["sfu"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?defina LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?defina LIVEKIT_API_SECRET}"
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          port_range_start: 50000
+          port_range_end: 50100
+          use_external_ip: true
 
 volumes:
   mysql_data:

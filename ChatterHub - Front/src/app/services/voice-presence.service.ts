@@ -1,4 +1,4 @@
-import { Injectable, effect, signal } from '@angular/core';
+import { Injectable, effect, signal, untracked } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -27,8 +27,8 @@ export class VoicePresenceService {
   ) {
     effect(() => {
       const serverId = this.serverService.activeServerId();
-      this.watch(serverId || '');
-    });
+      untracked(() => this.watch(serverId || ''));
+    }, { allowSignalWrites: true });
     this.ws.onReconnected$.subscribe(() => this.load());
   }
 

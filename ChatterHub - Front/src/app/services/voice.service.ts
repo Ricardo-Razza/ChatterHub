@@ -9,6 +9,7 @@ import { environment } from "../../environments/environment";
 import { MicPipeline } from "../voice/mic-pipeline";
 import { AppAudioCapture } from "../voice/app-audio";
 import { AudioApp, ShareSelection, ShareSource, getDesktopBridge } from "../voice/desktop-bridge";
+import { SfuQuality, SfuSource, SfuTransport } from "../voice/sfu-transport";
 
 /** Estado de cada participante, mantido pelo servidor (VoiceRoomRegistry) e publicado em /topic/voice/{canal}. */
 export interface VoiceState {
@@ -164,6 +165,16 @@ export class VoiceService {
   private statsTimer: any = null;
   private cameraStarting = false;
   private unsubscribePtt?: () => void;
+
+  // ---- SFU (LiveKit). Sem SFU configurado a mídia segue pela malha P2P. ----
+  private sfu: SfuTransport | null = null;
+  private sfuTracks: Record<string, Partial<Record<SfuSource, MediaStreamTrack>>> = {};
+  private sfuStreams = new Map<string, MediaStream>();
+  private sfuAudio = new Map<string, HTMLAudioElement>();
+  private sfuQuality: Record<string, SfuQuality> = {};
+  private readonly _usingSfu = signal(false);
+  /** true quando a mídia passa pelo SFU em vez da malha P2P */
+  readonly usingSfu = this._usingSfu.asReadonly();
 
   /** Streams de saída com id estável: o id vai no estado do participante e permite ao receptor saber o que é cada stream. */
   private readonly outMic = new MediaStream();
@@ -455,6 +466,9 @@ export class VoiceService {
     await this.loadIceServers();
     if (session !== this.session) return;
 
+    await this.connectSfu(target, session);
+    if (session !== this.session) return;
+
     this.subscribe(target);
     await this.startMic(session);
     if (session !== this.session) return;
@@ -478,6 +492,7 @@ export class VoiceService {
     for (const id of Object.keys(this.peers)) this.closePeer(id);
     this.peers = {};
     this.earlySignals = {};
+    this.teardownSfu();
     this.subscriptions.forEach((s) => s.unsubscribe());
     this.subscriptions = [];
     clearInterval(this.statsTimer);
@@ -511,6 +526,101 @@ export class VoiceService {
     } catch (e) {
       console.warn("[VoiceService] Sem configuração ICE do servidor, usando STUN público:", e);
       this.iceServers = FALLBACK_ICE;
+    }
+  }
+
+  private async connectSfu(channelId: string, session: number): Promise<void> {
+    try {
+      const res = await new Promise<{ url: string; token: string } | null>((resolve, reject) => {
+        this.http
+          .get<{ url: string; token: string }>(`${environment.apiUrl}/voice/sfu`, { params: { channelId } })
+          .subscribe({
+            next: resolve,
+            error: (err) => (err?.status === 404 ? resolve(null) : reject(err)),
+          });
+      });
+      if (!res || session !== this.session) return;
+
+      const transport = new SfuTransport({
+        onTrack: (userId, source, track) => {
+          (this.sfuTracks[userId] ??= {})[source] = track;
+          if (source === "camera" || source === "screen") {
+            this.sfuStreams.set(`${userId}:${source}`, new MediaStream([track]));
+          }
+          this.reconcileAudio();
+          this.bump();
+        },
+        onTrackRemoved: (userId, source) => {
+          delete this.sfuTracks[userId]?.[source];
+          this.sfuStreams.delete(`${userId}:${source}`);
+          const key = `${userId}:${source}`;
+          const el = this.sfuAudio.get(key);
+          if (el) {
+            this.destroyAudio(el);
+            this.sfuAudio.delete(key);
+          }
+          this.bump();
+        },
+        onQuality: (userId, level) => {
+          this.sfuQuality[userId] = level;
+          this.publishSfuStats();
+        },
+        onConnection: (state) => {
+          if (!this.joinedChannelId) return;
+          if (state === "reconnecting") this._phase.set("reconnecting");
+          else if (state === "connected") this._phase.set("connected");
+          else this._voiceError.set("A conexão de mídia com o servidor foi encerrada. Saia e entre na sala novamente.");
+        },
+      });
+      await transport.connect(res.url, res.token);
+      if (session !== this.session) {
+        void transport.disconnect();
+        return;
+      }
+      this.sfu = transport;
+      this._usingSfu.set(true);
+    } catch (err) {
+      // SFU fora do ar ou mal configurado: não deixa a pessoa sem voz, cai na malha P2P.
+      console.warn("[VoiceService] SFU indisponível, usando P2P:", err);
+      this.sfu = null;
+      this._usingSfu.set(false);
+    }
+  }
+
+  private teardownSfu(): void {
+    const sfu = this.sfu;
+    this.sfu = null;
+    this._usingSfu.set(false);
+    if (sfu) void sfu.disconnect().catch(() => {});
+    this.sfuAudio.forEach((el) => this.destroyAudio(el));
+    this.sfuAudio.clear();
+    this.sfuTracks = {};
+    this.sfuStreams.clear();
+    this.sfuQuality = {};
+  }
+
+  private publishSfuStats(): void {
+    const stats: Record<string, PeerStats> = {};
+    for (const [userId, level] of Object.entries(this.sfuQuality)) {
+      stats[userId] = { rttMs: null, lossPct: null, relayed: false, level };
+    }
+    this._peerStats.set(stats);
+  }
+
+  private reconcileSfuAudio(deaf: boolean): void {
+    for (const [userId, tracks] of Object.entries(this.sfuTracks)) {
+      for (const [source, role] of [["microphone", "voice"], ["screen_audio", "screen"]] as const) {
+        const track = tracks[source];
+        if (!track) continue;
+        const key = `${userId}:${source}`;
+        let el = this.sfuAudio.get(key);
+        if (!el) {
+          el = this.createAudio(new MediaStream([track]), userId, role);
+          this.sfuAudio.set(key, el);
+        }
+        el.muted = deaf;
+        el.volume = this.volumeFor(userId, role);
+      }
     }
   }
 
@@ -580,13 +690,15 @@ export class VoiceService {
     }
     this._phase.set("connected");
 
-    const others = list.filter((p) => p.userId !== myId);
-    const present = new Set(others.map((p) => p.userId));
-    for (const id of Object.keys(this.peers)) {
-      if (!present.has(id)) this.closePeer(id);
-    }
-    for (const p of others) {
-      if (!this.peers[p.userId]) this.createPeer(p.userId);
+    if (!this.sfu) {
+      const others = list.filter((p) => p.userId !== myId);
+      const present = new Set(others.map((p) => p.userId));
+      for (const id of Object.keys(this.peers)) {
+        if (!present.has(id)) this.closePeer(id);
+      }
+      for (const p of others) {
+        if (!this.peers[p.userId]) this.createPeer(p.userId);
+      }
     }
 
     this.reconcileAudio();
@@ -599,8 +711,12 @@ export class VoiceService {
   }
 
   private remoteStream(userId: string, kind: "screen" | "camera"): MediaStream | null {
-    const peer = this.peers[userId];
     const state = this.stateOf(userId);
+    if (this.sfu) {
+      const live = kind === "screen" ? state?.isSharingScreen : state?.isCameraOn;
+      return live ? this.sfuStreams.get(`${userId}:${kind}`) ?? null : null;
+    }
+    const peer = this.peers[userId];
     if (!peer || !state) return null;
     const id = kind === "screen" ? state.screenStreamId : state.cameraStreamId;
     const live = kind === "screen" ? state.isSharingScreen : state.isCameraOn;
@@ -843,6 +959,7 @@ export class VoiceService {
   /** Cria/atualiza os <audio> de cada par conforme o papel do stream (voz ou áudio da tela). */
   private reconcileAudio(deafOverride?: boolean): void {
     const deaf = deafOverride ?? !!this.auth.currentUser().isDeafened;
+    if (this.sfu) this.reconcileSfuAudio(deaf);
     for (const peer of Object.values(this.peers)) {
       const state = this.stateOf(peer.userId);
       if (!state) continue;
@@ -952,6 +1069,7 @@ export class VoiceService {
       for (const peer of Object.values(this.peers)) {
         void peer.micTx?.sender.replaceTrack(this.micTrack);
       }
+      void this.sfu?.setMicrophone(this.micTrack).catch((e) => console.warn("[SFU] mic:", e));
       // Rótulos dos dispositivos só aparecem depois da permissão.
       void this.loadAudioDevices();
     } catch (err) {
@@ -980,6 +1098,7 @@ export class VoiceService {
     for (const peer of Object.values(this.peers)) {
       void peer.micTx?.sender.replaceTrack(null).catch(() => {});
     }
+    void this.sfu?.setMicrophone(null).catch(() => {});
   }
 
   // =====================================================================
@@ -1007,6 +1126,7 @@ export class VoiceService {
         void peer.camTx?.sender.replaceTrack(track);
         if (peer.camTx) void this.tuneSender(peer.camTx.sender, { maxBitrate: 1_500_000 });
       }
+      void this.sfu?.setCamera(track).catch((e) => console.warn("[SFU] câmera:", e));
       this.publishState();
     } catch (err) {
       console.warn("[VoiceService] Erro ao acessar câmera:", err);
@@ -1029,6 +1149,7 @@ export class VoiceService {
     for (const peer of Object.values(this.peers)) {
       void peer.camTx?.sender.replaceTrack(null).catch(() => {});
     }
+    void this.sfu?.setCamera(null).catch(() => {});
     this.publishState();
   }
 
@@ -1124,6 +1245,7 @@ export class VoiceService {
       await peer.screenAudioTx?.sender.replaceTrack(audio);
     }
     await this.updateScreenSenderParams();
+    await this.sfu?.setScreen(video, audio, this.sfuScreenOptions());
     this.publishState();
     // O stream bruto só interessa pelas trilhas; evita referência solta.
     void source;
@@ -1134,8 +1256,13 @@ export class VoiceService {
   }
 
   /** Na malha cada espectador custa um upload completo; reparte o orçamento entre os pares. */
+  private sfuScreenOptions(): { bitrate: number; fps: number; detail: boolean } {
+    const preset = this.preset();
+    return { bitrate: preset.bitrate, fps: preset.fps, detail: this._screenContent() === "detail" };
+  }
+
   private async updateScreenSenderParams(): Promise<void> {
-    if (!this._isSharingScreen()) return;
+    if (!this._isSharingScreen() || this.sfu) return;
     const peers = Object.values(this.peers);
     if (peers.length === 0) return;
     const preset = this.preset();
@@ -1190,6 +1317,7 @@ export class VoiceService {
       await peer.screenVideoTx?.sender.replaceTrack(null).catch(() => {});
       await peer.screenAudioTx?.sender.replaceTrack(null).catch(() => {});
     }
+    await this.sfu?.setScreen(null, null, this.sfuScreenOptions()).catch(() => {});
     await getDesktopBridge()?.stopShare().catch(() => {});
   }
 
@@ -1268,6 +1396,7 @@ export class VoiceService {
   }
 
   private async pollStats(): Promise<void> {
+    if (this.sfu) return; // qualidade vem dos eventos do SFU
     const result: Record<string, PeerStats> = {};
     await Promise.all(
       Object.values(this.peers).map(async (peer) => {

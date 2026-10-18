@@ -66,10 +66,18 @@ npm run voice      # 2 usuários: presença, áudio, câmera, tela, navegação,
 npm run desktop    # app Electron + Chrome: seletor de tela e transmissão
 ```
 
+## SFU (LiveKit) — salas maiores
+
+Por padrão a mídia vai em malha P2P. Para escalar, configure `LIVEKIT_URL`, `LIVEKIT_API_KEY` e `LIVEKIT_API_SECRET`
+na API e suba o servidor com `docker compose --profile sfu up -d` (ou rode o binário do LiveKit). A API emite o token
+em `GET /api/voice/sfu?channelId=` (404 sem SFU). O cliente tenta o SFU primeiro e cai na malha P2P se ele estiver indisponível.
+Cada pessoa envia UMA vez ao servidor, então transmitir a tela deixa de custar um upload por espectador.
+A presença, o mute e os avisos continuam pela sinalização própria.
+
 ## Limites conhecidos
 
-- A topologia é **malha (P2P)**: cada espectador custa um upload completo de quem transmite. Funciona bem para grupos
-  pequenos (até ~4-6 pessoas); acima disso o próximo passo é um SFU (LiveKit/mediasoup).
+- Sem SFU configurado a topologia é **malha (P2P)**: cada espectador custa um upload completo de quem transmite
+  (até ~4-6 pessoas). Acima disso, ative o SFU (seção acima).
 - Áudio por aplicativo só em Windows; macOS/Linux transmitem tela sem áudio.
 - Push-to-talk global usa `uiohook-napi` (dependência opcional). Sem ele o push-to-talk só funciona com a janela em foco.
 - Sem auto-update nem assinatura de código no instalador do Electron.

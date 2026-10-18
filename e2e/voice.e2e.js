@@ -89,6 +89,10 @@ async function pcStats(page) {
   const ice = await api('/voice/ice-servers', 'GET', users.bob.token);
   check('ice-servers devolve STUN', ice.status === 200 && ice.json.iceServers.length >= 1, JSON.stringify(ice.json));
 
+  if (process.env.SFU) {
+    const sfuRes = await api(`/voice/sfu?channelId=${voice.id}`, 'GET', users.bob.token);
+    check('SFU configurado na API (token LiveKit)', sfuRes.status === 200 && !!sfuRes.json.token, String(sfuRes.status));
+  }
   const browser = await chromium.launch({
     executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
     headless: false,
@@ -128,6 +132,8 @@ async function pcStats(page) {
     await p.getByRole('button', { name: 'Sala Geral' }).click({ timeout: 20000 });
   };
   await joinVoice(A.page);
+  const presenceSeen = await waitFor(async () => (await B.page.locator('aside').getByText(users.alice.user.username).count()) > 0, 10000);
+  check('presença: B vê A no canal de voz antes de entrar', presenceSeen);
   await joinVoice(B.page);
 
   const bothSeeTwo = await waitFor(async () => {
@@ -140,14 +146,15 @@ async function pcStats(page) {
   const connected = await waitFor(async () => {
     const a = await pcStats(A.page);
     const b = await pcStats(B.page);
-    return a.length === 1 && b.length === 1 && a[0].state === 'connected' && b[0].state === 'connected';
+    return a.length >= 1 && b.length >= 1 && a.every((c) => c.state === 'connected') && b.every((c) => c.state === 'connected');
   }, 25000);
   check('WebRTC conectado nos dois lados (perfect negotiation, sem glare travado)', connected);
 
   const audioFlows = await waitFor(async () => {
     const a = await pcStats(A.page);
     const b = await pcStats(B.page);
-    return a[0]?.audioIn > 2000 && b[0]?.audioIn > 2000;
+    const sum = (l) => l.reduce((t, c) => t + c.audioIn, 0);
+    return sum(a) > 2000 && sum(b) > 2000;
   }, 20000);
   check('áudio do microfone chega nos dois sentidos', audioFlows);
 

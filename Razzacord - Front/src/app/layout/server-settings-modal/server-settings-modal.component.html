@@ -1,0 +1,163 @@
+<div *ngIf="visible()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+     (click)="close()">
+  <div class="flex h-[560px] max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-ch-bg-dark shadow-2xl border border-ch-border"
+       (click)="$event.stopPropagation()">
+
+    <!-- Cabeçalho e abas -->
+    <div class="flex shrink-0 items-center justify-between border-b border-ch-border px-6 pt-4">
+      <div class="min-w-0">
+        <h2 class="truncate text-lg font-bold text-ch-text-primary">Configurações do servidor</h2>
+        <p class="truncate text-xs text-ch-text-muted">{{ serverName }}</p>
+        <div class="mt-3 flex gap-4">
+          <button *ngIf="canManageRoles()" type="button" (click)="setTab('roles')"
+            class="border-b-2 pb-2 text-sm font-semibold transition-colors"
+            [ngClass]="tab() === 'roles' ? 'border-ch-brand text-ch-text-primary' : 'border-transparent text-ch-text-muted hover:text-ch-text-primary'">
+            Cargos
+          </button>
+          <button type="button" (click)="setTab('members')"
+            class="border-b-2 pb-2 text-sm font-semibold transition-colors"
+            [ngClass]="tab() === 'members' ? 'border-ch-brand text-ch-text-primary' : 'border-transparent text-ch-text-muted hover:text-ch-text-primary'">
+            Membros
+          </button>
+        </div>
+      </div>
+      <button type="button" (click)="close()" aria-label="Fechar"
+        class="flex h-8 w-8 items-center justify-center rounded text-ch-text-muted hover:text-ch-text-primary transition-colors">
+        <lucide-icon name="x" [size]="18"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- ===== Aba Cargos ===== -->
+    <div *ngIf="tab() === 'roles'" class="flex min-h-0 flex-1">
+      <!-- Lista -->
+      <div class="flex w-56 shrink-0 flex-col border-r border-ch-border">
+        <div class="flex-1 overflow-y-auto p-2">
+          <ul class="flex flex-col gap-0.5">
+            <li *ngFor="let role of sortedRoles()" class="flex items-center gap-1">
+              <button type="button" (click)="select(role.id)"
+                class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors"
+                [ngClass]="selectedId() === role.id ? 'bg-ch-bg-light text-ch-text-primary' : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'">
+                <span class="h-3 w-3 shrink-0 rounded-full" [style.background-color]="role.color"></span>
+                <span class="truncate">{{ role.name }}</span>
+              </button>
+              <button type="button" (click)="move(role, -1)" [disabled]="!canMove(role, -1)" aria-label="Subir cargo" title="Subir"
+                class="flex h-6 w-6 items-center justify-center rounded text-xs text-ch-text-muted hover:text-ch-text-primary disabled:opacity-20 disabled:hover:text-ch-text-muted">↑</button>
+              <button type="button" (click)="move(role, 1)" [disabled]="!canMove(role, 1)" aria-label="Descer cargo" title="Descer"
+                class="flex h-6 w-6 items-center justify-center rounded text-xs text-ch-text-muted hover:text-ch-text-primary disabled:opacity-20 disabled:hover:text-ch-text-muted">↓</button>
+            </li>
+            <li>
+              <button type="button" (click)="select(EVERYONE)"
+                class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors"
+                [ngClass]="selectedId() === EVERYONE ? 'bg-ch-bg-light text-ch-text-primary' : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'">
+                <span class="h-3 w-3 shrink-0 rounded-full bg-ch-text-muted"></span>
+                <span class="truncate">&#64;todos</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="border-t border-ch-border p-2">
+          <button type="button" (click)="createRole()"
+            class="flex w-full items-center justify-center gap-1 rounded-md bg-ch-brand px-3 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all">
+            <lucide-icon name="plus" [size]="14"></lucide-icon> Criar cargo
+          </button>
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div class="min-w-0 flex-1 overflow-y-auto p-6">
+        <ng-container *ngIf="selectedId() !== EVERYONE && !selectedRole()">
+          <p class="text-sm text-ch-text-muted">Selecione um cargo para editar.</p>
+        </ng-container>
+
+        <ng-container *ngIf="selectedId() === EVERYONE || selectedRole()">
+          <p *ngIf="editorReadOnly" class="mb-4 rounded-md bg-ch-bg-darker px-3 py-2 text-xs text-ch-text-muted">
+            {{ selectedId() === EVERYONE
+              ? 'Somente o dono do servidor pode alterar as permissões de @todos.'
+              : 'Você não pode editar este cargo (ele está no mesmo nível ou acima do seu).' }}
+          </p>
+
+          <ng-container *ngIf="selectedId() !== EVERYONE">
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ch-text-muted">Nome do cargo</label>
+            <input type="text" [ngModel]="draftName()" (ngModelChange)="draftName.set($event)" maxlength="32"
+              [disabled]="editorReadOnly"
+              class="mb-4 w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary outline-none ring-1 ring-ch-border focus:ring-ch-brand disabled:opacity-50 transition-all" />
+
+            <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ch-text-muted">Cor</label>
+            <input type="color" [ngModel]="draftColor()" (ngModelChange)="draftColor.set($event)" [disabled]="editorReadOnly"
+              class="mb-4 h-9 w-16 cursor-pointer rounded-md bg-ch-bg-darker p-1 ring-1 ring-ch-border disabled:opacity-50" />
+          </ng-container>
+
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-ch-text-muted">Permissões</p>
+          <ul class="mb-5 flex flex-col gap-1">
+            <li *ngFor="let p of PERM_LABELS">
+              <label class="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-ch-text-primary"
+                [class.opacity-50]="permDisabled(p.bit)" [class.cursor-pointer]="!permDisabled(p.bit)">
+                <input type="checkbox" [checked]="hasDraftPerm(p.bit)" [disabled]="permDisabled(p.bit)"
+                  (change)="toggleDraftPerm(p.bit)" />
+                {{ p.label }}
+              </label>
+            </li>
+          </ul>
+
+          <div class="flex items-center justify-between">
+            <button *ngIf="selectedId() !== EVERYONE && !editorReadOnly" type="button" (click)="deleteRole()"
+              class="rounded-md px-3 py-2 text-sm font-semibold text-ch-danger hover:brightness-125 transition-all">
+              {{ confirmDelete() ? 'Confirmar exclusão' : 'Excluir cargo' }}
+            </button>
+            <span *ngIf="selectedId() === EVERYONE || editorReadOnly"></span>
+            <button *ngIf="!editorReadOnly" type="button" (click)="saveRole()" [disabled]="saving()"
+              class="rounded-md bg-ch-brand px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40 transition-all">
+              Salvar
+            </button>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- ===== Aba Membros ===== -->
+    <div *ngIf="tab() === 'members'" class="min-h-0 flex-1 overflow-y-auto p-4">
+      <ul class="flex flex-col gap-1">
+        <li *ngFor="let m of roleService.members()" class="relative flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-ch-bg-light">
+          <img [src]="m.avatarUrl" [alt]="m.username" class="h-9 w-9 shrink-0 rounded-full object-cover" />
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold"
+              [style.color]="roleService.colorFor(m.id) ?? 'var(--ch-text-primary, inherit)'">
+              {{ m.username }}
+              <span *ngIf="m.owner" class="ml-1 text-xs font-normal text-ch-text-muted">(dono)</span>
+            </p>
+            <div class="mt-1 flex flex-wrap gap-1">
+              <span *ngFor="let r of memberRoles(m)"
+                class="flex items-center gap-1 rounded-full bg-ch-bg-darker px-2 py-0.5 text-xs text-ch-text-primary">
+                <span class="h-2 w-2 rounded-full" [style.background-color]="r.color"></span>{{ r.name }}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex shrink-0 items-center gap-2">
+            <button *ngIf="canManageRoles() && canActOn(m)" type="button" (click)="toggleMenu(m.id)"
+              class="rounded-md px-3 py-1.5 text-xs font-semibold text-ch-text-muted ring-1 ring-ch-border hover:text-ch-text-primary transition-colors">
+              Cargos…
+            </button>
+            <button *ngIf="canKickMember(m)" type="button" (click)="kick(m)"
+              class="rounded-md px-3 py-1.5 text-xs font-semibold text-ch-danger ring-1 ring-ch-border hover:brightness-125 transition-all">
+              {{ confirmKickFor() === m.id ? 'Confirmar expulsão' : 'Expulsar' }}
+            </button>
+          </div>
+
+          <!-- Menu de cargos -->
+          <div *ngIf="openMenuFor() === m.id"
+            class="absolute right-3 top-full z-10 mt-1 max-h-56 w-56 overflow-y-auto rounded-lg border border-ch-border bg-ch-bg-darker p-2 shadow-xl">
+            <p *ngIf="sortedRoles().length === 0" class="px-2 py-1 text-xs italic text-ch-text-muted">Nenhum cargo criado</p>
+            <label *ngFor="let r of sortedRoles()" class="flex items-center gap-2 rounded px-2 py-1 text-sm text-ch-text-primary"
+              [class.opacity-50]="roleCheckDisabled(m, r)">
+              <input type="checkbox" [checked]="m.roleIds.includes(r.id)" [disabled]="roleCheckDisabled(m, r)"
+                (change)="toggleMemberRole(m, r)" />
+              <span class="h-2 w-2 shrink-0 rounded-full" [style.background-color]="r.color"></span>
+              <span class="truncate">{{ r.name }}</span>
+            </label>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

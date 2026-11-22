@@ -8,6 +8,11 @@
       title="Convidar pessoas" aria-label="Convidar pessoas">
       <lucide-icon name="user-plus" [size]="18"></lucide-icon>
     </button>
+    <button *ngIf="serverService.activeServerId() && canOpenSettings()" type="button" (click)="openSettings()"
+      class="flex h-7 w-7 shrink-0 items-center justify-center rounded text-ch-text-muted hover:text-ch-text-primary transition-colors"
+      title="Configurações do servidor" aria-label="Configurações do servidor">
+      <lucide-icon name="settings" [size]="18"></lucide-icon>
+    </button>
   </div>
 
   <!-- Estado vazio -->
@@ -149,3 +154,4 @@
 <!-- Modal criar canal -->
 <app-create-channel-modal />
 <app-invite-modal />
+<app-server-settings-modal />

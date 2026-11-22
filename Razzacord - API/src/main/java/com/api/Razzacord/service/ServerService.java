@@ -3,19 +3,23 @@ package com.api.Razzacord.service;
 import com.api.Razzacord.dto.ChannelRequest;
 import com.api.Razzacord.dto.ServerRequest;
 import com.api.Razzacord.dto.ServerResponse;
-import com.api.Razzacord.dto.UserResponse;
+import com.api.Razzacord.dto.MemberResponse;
 import com.api.Razzacord.model.ChannelType;
 import com.api.Razzacord.model.Server;
 import com.api.Razzacord.model.ServerMember;
+import com.api.Razzacord.model.ServerMemberRole;
 import com.api.Razzacord.model.User;
 import com.api.Razzacord.repository.ServerMemberRepository;
+import com.api.Razzacord.repository.ServerMemberRoleRepository;
 import com.api.Razzacord.repository.ServerRepository;
+import com.api.Razzacord.repository.ServerRoleRepository;
 import com.api.Razzacord.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,6 +43,12 @@ public class ServerService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ServerRoleRepository serverRoleRepository;
+
+    @Autowired
+    private ServerMemberRoleRepository serverMemberRoleRepository;
 
     public List<ServerResponse> getServersForCurrentUser() {
         User currentUser = userService.getCurrentUserModel();
@@ -110,6 +120,8 @@ public class ServerService {
         }
 
         serverInviteRepository.deleteByServerId(id);
+        serverMemberRoleRepository.deleteByServerId(id);
+        serverRoleRepository.deleteByServerId(id);
         serverMemberRepository.deleteByServerId(id);
         channelService.deleteChannelsByServerId(id);
         serverRepository.deleteById(id);
@@ -128,16 +140,39 @@ public class ServerService {
         serverMemberRepository.delete(member);
     }
 
-    public List<UserResponse> getServerMembers(UUID serverId) {
+    public List<MemberResponse> getServerMembers(UUID serverId) {
         if (serverMemberRepository.findByServerIdAndUserId(serverId, userService.getCurrentUserModel().getId()).isEmpty()) {
             throw com.api.Razzacord.exception.ApiException.forbidden("Você não é membro deste servidor");
         }
-        List<ServerMember> memberships = serverMemberRepository.findByServerId(serverId);
-        return memberships.stream()
+        UUID ownerId = serverRepository.findById(serverId).map(Server::getOwnerId).orElse(null);
+        Map<UUID, List<UUID>> rolesByUser = serverMemberRoleRepository.findByServerId(serverId).stream()
+                .collect(Collectors.groupingBy(ServerMemberRole::getUserId,
+                        Collectors.mapping(ServerMemberRole::getRoleId, Collectors.toList())));
+        return serverMemberRepository.findByServerId(serverId).stream()
                 .map(m -> userRepository.findById(m.getUserId()).orElse(null))
                 .filter(u -> u != null)
-                .map(userService::mapToUserResponse)
+                .map(u -> toMemberResponse(u, ownerId, rolesByUser.getOrDefault(u.getId(), List.of())))
                 .collect(Collectors.toList());
+    }
+
+    public MemberResponse getMemberResponse(UUID serverId, UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> com.api.Razzacord.exception.ApiException.notFound("Membro não encontrado"));
+        UUID ownerId = serverRepository.findById(serverId).map(Server::getOwnerId).orElse(null);
+        List<UUID> roleIds = serverMemberRoleRepository.findByServerIdAndUserId(serverId, userId).stream()
+                .map(ServerMemberRole::getRoleId).collect(Collectors.toList());
+        return toMemberResponse(user, ownerId, roleIds);
+    }
+
+    private MemberResponse toMemberResponse(User u, UUID ownerId, List<UUID> roleIds) {
+        return MemberResponse.builder()
+                .id(u.getId())
+                .username(u.getUsername())
+                .avatarUrl(u.getAvatarUrl())
+                .status(u.getStatus())
+                .owner(u.getId().equals(ownerId))
+                .roleIds(roleIds)
+                .build();
     }
 
     public ServerResponse mapToServerResponse(Server server) {

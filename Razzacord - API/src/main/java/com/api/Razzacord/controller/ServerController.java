@@ -3,7 +3,7 @@ package com.api.Razzacord.controller;
 import com.api.Razzacord.dto.InviteResponse;
 import com.api.Razzacord.dto.ServerRequest;
 import com.api.Razzacord.dto.ServerResponse;
-import com.api.Razzacord.dto.UserResponse;
+import com.api.Razzacord.dto.MemberResponse;
 import com.api.Razzacord.service.InviteService;
 import com.api.Razzacord.service.ServerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +56,7 @@ public class ServerController {
     }
 
     @GetMapping("/{id}/members")
-    public ResponseEntity<List<UserResponse>> getMembers(@PathVariable UUID id) {
+    public ResponseEntity<List<MemberResponse>> getMembers(@PathVariable UUID id) {
         return ResponseEntity.ok(serverService.getServerMembers(id));
     }
 }

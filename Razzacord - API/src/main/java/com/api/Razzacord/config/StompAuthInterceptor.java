@@ -32,6 +32,7 @@ public class StompAuthInterceptor implements ChannelInterceptor {
     private static final Pattern VOICE_TOPIC = Pattern.compile("^/topic/voice/" + UUID_RE + "$");
     private static final Pattern CHANNEL_TOPIC = Pattern.compile("^/topic/channels/" + UUID_RE + "(/events)?$");
     private static final Pattern SERVER_VOICE_TOPIC = Pattern.compile("^/topic/servers/" + UUID_RE + "/voice$");
+    private static final Pattern SERVER_EVENTS_TOPIC = Pattern.compile("^/topic/servers/" + UUID_RE + "/events$");
     private static final Pattern DM_TOPIC = Pattern.compile("^/topic/dm/" + UUID_RE + "$");
 
     private final JwtService jwtService;
@@ -114,6 +115,12 @@ public class StompAuthInterceptor implements ChannelInterceptor {
         }
 
         m = SERVER_VOICE_TOPIC.matcher(destination);
+        if (m.matches()) {
+            accessService.requireServerMember(UUID.fromString(m.group(1)), user);
+            return;
+        }
+
+        m = SERVER_EVENTS_TOPIC.matcher(destination);
         if (m.matches()) {
             accessService.requireServerMember(UUID.fromString(m.group(1)), user);
             return;

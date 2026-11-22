@@ -131,6 +131,15 @@ export class ServerService {
     return `${window.location.origin}/convite/${code}`;
   }
 
+  kickMember(serverId: string, userId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.http.delete<void>(`${environment.apiUrl}/servers/${serverId}/members/${userId}`).subscribe({
+        next: () => resolve(),
+        error: (err) => reject(err?.error?.message || err?.message || 'Erro ao expulsar membro'),
+      });
+    });
+  }
+
   leaveServer(serverId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.http.post<any>(`${environment.apiUrl}/servers/${serverId}/leave`, {}).subscribe({

@@ -31,6 +31,10 @@ public class Server {
     @Column(nullable = false)
     private UUID ownerId;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 65 NOT NULL")
+    private long defaultPermissions = 65;
+
     private LocalDateTime createdAt;
 
     @PrePersist

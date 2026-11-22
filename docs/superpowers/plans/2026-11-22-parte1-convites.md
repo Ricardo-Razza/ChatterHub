@@ -36,13 +36,13 @@ aceita, e um modal "Convidar pessoas" que gera e copia o link.
 ### Task 1: `ServerInvite` + `InviteService` (API)
 
 **Files:**
-- Create: `ChatterHub - API/src/main/java/com/api/ChatterHub/model/ServerInvite.java`
-- Create: `ChatterHub - API/src/main/java/com/api/ChatterHub/repository/ServerInviteRepository.java`
-- Create: `ChatterHub - API/src/main/java/com/api/ChatterHub/dto/InviteResponse.java`
-- Create: `ChatterHub - API/src/main/java/com/api/ChatterHub/dto/InvitePreviewResponse.java`
-- Create: `ChatterHub - API/src/main/java/com/api/ChatterHub/service/InviteService.java`
-- Modify: `ChatterHub - API/src/main/java/com/api/ChatterHub/service/ServerService.java` (remover `joinServer`; `deleteServer` apaga convites)
-- Test: `ChatterHub - API/src/test/java/com/api/ChatterHub/InviteServiceTest.java`
+- Create: `Razzacord - API/src/main/java/com/api/Razzacord/model/ServerInvite.java`
+- Create: `Razzacord - API/src/main/java/com/api/Razzacord/repository/ServerInviteRepository.java`
+- Create: `Razzacord - API/src/main/java/com/api/Razzacord/dto/InviteResponse.java`
+- Create: `Razzacord - API/src/main/java/com/api/Razzacord/dto/InvitePreviewResponse.java`
+- Create: `Razzacord - API/src/main/java/com/api/Razzacord/service/InviteService.java`
+- Modify: `Razzacord - API/src/main/java/com/api/Razzacord/service/ServerService.java` (remover `joinServer`; `deleteServer` apaga convites)
+- Test: `Razzacord - API/src/test/java/com/api/Razzacord/InviteServiceTest.java`
 
 **Interfaces:**
 - Produces:
@@ -66,7 +66,7 @@ aceita, e um modal "Convidar pessoas" que gera e copia o link.
   - `apagarServidorApagaConvites` — alice apaga o servidor; `preview(code)` → 404 e `repo.findByCode(code)` vazio.
   - `preview_mostraNomeEContagemDeMembros` — depois do bob entrar: `serverName` correto e `memberCount == 2`.
 - [ ] **Step 2: Rodar e ver falhar**
-  Run: `mvn -q -f "ChatterHub - API/pom.xml" test -Dtest=InviteServiceTest`
+  Run: `mvn -q -f "Razzacord - API/pom.xml" test -Dtest=InviteServiceTest`
   Expected: erro de compilação (`InviteService` não existe).
 - [ ] **Step 3: Criar entidade, repositório, DTOs e `InviteService`** com as assinaturas acima. Código: 8 chars de
   `SecureRandom` sobre `[A-Za-z0-9]`, repetir enquanto `existsByCode`. `preview`/`accept` usam um
@@ -76,18 +76,18 @@ aceita, e um modal "Convidar pessoas" que gera e copia o link.
 - [ ] **Step 5: Ajustar `VoiceSignalingTest`** linha ~105: trocar `serverService.joinServer(server.getId())` por
   criar o convite como alice e aceitar como o outro usuário (`inviteService.accept(invite.getCode())`).
 - [ ] **Step 6: Rodar tudo**
-  Run: `mvn -q -f "ChatterHub - API/pom.xml" test`
+  Run: `mvn -q -f "Razzacord - API/pom.xml" test`
   Expected: BUILD SUCCESS, 0 falhas.
 - [ ] **Step 7: Commit** — `feat(api): convites de servidor com código e validade`
 
 ### Task 2: Endpoints REST de convite (API)
 
 **Files:**
-- Create: `ChatterHub - API/src/main/java/com/api/ChatterHub/controller/InviteController.java`
-- Modify: `ChatterHub - API/src/main/java/com/api/ChatterHub/controller/ServerController.java` (remover `/{id}/join`; adicionar `POST /{id}/invites`)
-- Modify: `ChatterHub - API/src/main/java/com/api/ChatterHub/config/SecurityConfig.java:44` (liberar `GET /api/invites/*`)
+- Create: `Razzacord - API/src/main/java/com/api/Razzacord/controller/InviteController.java`
+- Modify: `Razzacord - API/src/main/java/com/api/Razzacord/controller/ServerController.java` (remover `/{id}/join`; adicionar `POST /{id}/invites`)
+- Modify: `Razzacord - API/src/main/java/com/api/Razzacord/config/SecurityConfig.java:44` (liberar `GET /api/invites/*`)
 - Modify: `e2e/voice.e2e.js:79`, `e2e/desktop.e2e.js:14` (entrar via convite)
-- Test: `ChatterHub - API/src/test/java/com/api/ChatterHub/InviteControllerTest.java`
+- Test: `Razzacord - API/src/test/java/com/api/Razzacord/InviteControllerTest.java`
 
 **Interfaces:**
 - Consumes: `InviteService` (Task 1).
@@ -103,19 +103,19 @@ aceita, e um modal "Convidar pessoas" que gera e copia o link.
   - `codigoMalformadoDa404` — GET `/api/invites/..%2Fx`, `/api/invites/` + 200×"a" → 404 (nunca 5xx).
   - `joinAntigoNaoExiste` — POST `/api/servers/{id}/join` com token → status ≠ 2xx.
   - `fluxoCompleto` — alice cria (POST invites), bob aceita (POST accept) → 200 e GET `/api/servers` do bob lista o servidor.
-- [ ] **Step 2: Rodar e ver falhar** — `mvn -q -f "ChatterHub - API/pom.xml" test -Dtest=InviteControllerTest` → falhas 404/401.
+- [ ] **Step 2: Rodar e ver falhar** — `mvn -q -f "Razzacord - API/pom.xml" test -Dtest=InviteControllerTest` → falhas 404/401.
 - [ ] **Step 3: Implementar** `InviteController` (`@RequestMapping("/api/invites")`), o `POST /{id}/invites` no `ServerController`, remover `/{id}/join`, e em `SecurityConfig` `auth.requestMatchers(HttpMethod.GET, "/api/invites/*").permitAll();`.
-- [ ] **Step 4: Rodar tudo** — `mvn -q -f "ChatterHub - API/pom.xml" test` → BUILD SUCCESS.
+- [ ] **Step 4: Rodar tudo** — `mvn -q -f "Razzacord - API/pom.xml" test` → BUILD SUCCESS.
 - [ ] **Step 5: Atualizar e2e** — nos dois arquivos, trocar o `/join` por `const inv = await api(\`/servers/${id}/invites\`, 'POST', <token do dono>); await api(\`/invites/${inv.code}/accept\`, 'POST', <token do convidado>);`.
 - [ ] **Step 6: Commit** — `feat(api): rotas de convite e remove join direto`
 
 ### Task 3: Front — sem servidor automático + aceitar convite
 
 **Files:**
-- Modify: `ChatterHub - Front/src/app/services/server.service.ts` (remover auto-criação ~linha 50; trocar `joinServer` por `createInvite`, `previewInvite`, `acceptInvite`)
-- Modify: `ChatterHub - Front/src/app/layout/main-area/main-area.component.html` (texto do estado vazio)
-- Create: `ChatterHub - Front/src/app/layout/invite-page/invite-page.component.ts|html`
-- Modify: `ChatterHub - Front/src/app/app.routes.ts`
+- Modify: `Razzacord - Front/src/app/services/server.service.ts` (remover auto-criação ~linha 50; trocar `joinServer` por `createInvite`, `previewInvite`, `acceptInvite`)
+- Modify: `Razzacord - Front/src/app/layout/main-area/main-area.component.html` (texto do estado vazio)
+- Create: `Razzacord - Front/src/app/layout/invite-page/invite-page.component.ts|html`
+- Modify: `Razzacord - Front/src/app/app.routes.ts`
 
 **Interfaces:**
 - Consumes: endpoints da Task 2.
@@ -132,14 +132,14 @@ aceita, e um modal "Convidar pessoas" que gera e copia o link.
   login e não renderiza o `<router-outlet>`; quando o login conclui, o outlet aparece e ativa a rota já resolvida,
   abrindo o convite. Conferir que o `<router-outlet>` fica dentro do bloco `*ngIf="authService.isLoggedIn()"`.
 - [ ] **Step 4:** `InvitePageComponent`: ao iniciar chama `previewInvite`; mostra card centralizado (ícone/iniciais, "Você foi convidado para", nome, "N membros", botão **Entrar no servidor**). Erro → "Este convite é inválido ou expirou." com botão "Voltar". Ao aceitar → `router.navigate(['/'])`.
-- [ ] **Step 5: Build** — `npx --prefix "ChatterHub - Front" ng build` → sem erros.
+- [ ] **Step 5: Build** — `npx --prefix "Razzacord - Front" ng build` → sem erros.
 - [ ] **Step 6: Commit** — `feat(front): conta sem servidor e página de convite`
 
 ### Task 4: Front — modal "Convidar pessoas"
 
 **Files:**
-- Create: `ChatterHub - Front/src/app/layout/invite-modal/invite-modal.component.ts|html`
-- Modify: `ChatterHub - Front/src/app/layout/channel-sidebar/channel-sidebar.component.html:5` e `.ts`
+- Create: `Razzacord - Front/src/app/layout/invite-modal/invite-modal.component.ts|html`
+- Modify: `Razzacord - Front/src/app/layout/channel-sidebar/channel-sidebar.component.html:5` e `.ts`
 
 **Interfaces:**
 - Consumes: `ServerService.createInvite`, `inviteUrl` (Task 3).
@@ -147,7 +147,7 @@ aceita, e um modal "Convidar pessoas" que gera e copia o link.
 
 - [ ] **Step 1:** Ícone `user-plus` ao lado do nome do servidor no cabeçalho da `channel-sidebar` (só com servidor ativo), abre o modal.
 - [ ] **Step 2:** Modal no estilo do `create-server-modal`: título "Convidar amigos para {nome}", campo só-leitura com o link, botão **Copiar** (`navigator.clipboard.writeText`, vira "Copiado!" por 2 s), texto "O link expira em 7 dias.", botão "Gerar novo link".
-- [ ] **Step 3: Build** — `npx --prefix "ChatterHub - Front" ng build` → sem erros.
+- [ ] **Step 3: Build** — `npx --prefix "Razzacord - Front" ng build` → sem erros.
 - [ ] **Step 4: Commit** — `feat(front): modal de convite`
 
 ### Task 5: Verificação ponta a ponta (navegador)

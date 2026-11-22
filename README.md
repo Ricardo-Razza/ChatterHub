@@ -1,22 +1,22 @@
-# ChatterHub
+# Razzacord
 
 Chat com canais de texto e voz, chamadas por WebRTC e transmissão de tela.
 
-- `ChatterHub - API` — Spring Boot 3 (JWT, STOMP/WebSocket, sinalização de voz)
-- `ChatterHub - Front` — Angular 17
-- `ChatterHub - Desktop` — app Electron (seletor de tela, áudio por aplicativo, push-to-talk global)
+- `Razzacord - API` — Spring Boot 3 (JWT, STOMP/WebSocket, sinalização de voz)
+- `Razzacord - Front` — Angular 17
+- `Razzacord - Desktop` — app Electron (seletor de tela, áudio por aplicativo, push-to-talk global)
 
 ## Rodando em desenvolvimento
 
 ```bash
 # API (H2 em memória, JWT de desenvolvimento) — requer JDK 17+
-cd "ChatterHub - API" && mvn spring-boot:run
+cd "Razzacord - API" && mvn spring-boot:run
 
 # Front (http://localhost:4200)
-cd "ChatterHub - Front" && npm install && npm start
+cd "Razzacord - Front" && npm install && npm start
 
 # Desktop (opcional) apontando para o front local
-cd "ChatterHub - Desktop" && npm install && npm run dev
+cd "Razzacord - Desktop" && npm install && npm run dev
 ```
 
 A primeira conta criada vira **ADMIN**; as demais são MEMBER.
@@ -51,14 +51,14 @@ Variáveis obrigatórias: `JWT_SECRET` (>= 32 caracteres), `DB_PASSWORD`, `DB_RO
 ### Transmissão de tela sem a call
 
 - **App desktop (Windows 10 2004+)**: você escolhe a janela/tela e **de qual aplicativo sai o áudio**. Só o áudio desse
-  processo (e filhos) é capturado via WASAPI *process loopback* — Discord, a call do ChatterHub e o resto do sistema ficam de fora.
+  processo (e filhos) é capturado via WASAPI *process loopback* — Discord, a call do Razzacord e o resto do sistema ficam de fora.
   Usa os binários do pacote `application-loopback` (exemplo oficial da Microsoft empacotado), fixado na versão 1.2.7.
 - **Navegador**: o áudio vem apenas da aba compartilhada (`systemAudio: "exclude"`, `suppressLocalAudioPlayback`).
 
 ## Testes
 
 ```bash
-cd "ChatterHub - API" && mvn test          # unitários + integração STOMP (auth, presença, relay de sinais)
+cd "Razzacord - API" && mvn test          # unitários + integração STOMP (auth, presença, relay de sinais)
 
 # Ponta a ponta com Chrome real e WebRTC (API em :8080 e front em :4200 rodando)
 cd e2e && npm install

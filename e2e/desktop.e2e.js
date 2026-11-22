@@ -17,7 +17,7 @@ const res = []; const check = (n, ok, x = '') => { res.push(ok); console.log((ok
   const mkUser = (u) => [u.token, { id: u.user.id, username: u.user.username, avatarUrl: u.user.avatarUrl, status: 'online', role: u.user.role }];
 
   // A = Electron real (app desktop), B = Chrome
-  const el = spawn('C:/Users/razza/build/desktop/node_modules/electron/dist/electron.exe', ['C:/Users/razza/build/desktop', '--remote-debugging-port=9333'], { env: { ...process.env, CHATTERHUB_URL: APP }, stdio: 'ignore' });
+  const el = spawn('C:/Users/razza/build/desktop/node_modules/electron/dist/electron.exe', ['C:/Users/razza/build/desktop', '--remote-debugging-port=9333'], { env: { ...process.env, RAZZACORD_URL: APP }, stdio: 'ignore' });
   await sleep(6000);
   const eb = await chromium.connectOverCDP('http://127.0.0.1:9333');
   const ectx = eb.contexts()[0];

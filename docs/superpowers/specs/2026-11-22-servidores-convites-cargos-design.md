@@ -5,7 +5,7 @@ Data: 2026-11-22 · Status: aprovado
 ## Por quê
 
 Hoje cada conta nova ganha um servidor próprio e não há como trazer outra pessoa para ele — por isso duas contas
-nunca se encontram na mesma call ou chat. O objetivo é o ChatterHub funcionar "bem parecido com o Discord":
+nunca se encontram na mesma call ou chat. O objetivo é o Razzacord funcionar "bem parecido com o Discord":
 servidores criados de propósito, gente entrando por convite, o dono organizando cargos e o servidor do seu jeito.
 
 ## O que já existe (não refazer)

@@ -1,0 +1,34 @@
+<div class="flex h-full flex-1 items-center justify-center px-8 bg-ch-bg-deep">
+  <div class="w-full max-w-sm rounded-2xl border border-ch-brand/20 bg-ch-bg-deep p-8 text-center shadow-brand-glow">
+    <p *ngIf="loading()" class="text-sm text-ch-text-muted">Carregando convite...</p>
+
+    <ng-container *ngIf="!loading() && preview() as p">
+      <div class="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-ch-brand/10 border border-ch-brand/20 text-2xl font-bold text-ch-brand">
+        <img *ngIf="p.iconUrl" [src]="p.iconUrl" alt="" class="h-full w-full object-cover" />
+        <span *ngIf="!p.iconUrl">{{ p.initials }}</span>
+      </div>
+      <p class="mt-4 text-xs uppercase tracking-wide text-ch-text-muted">Você foi convidado para</p>
+      <h2 class="mt-1 text-2xl font-bold text-ch-text-primary">{{ p.serverName }}</h2>
+      <p class="mt-1 text-sm text-ch-text-muted">{{ p.memberCount }} {{ p.memberCount === 1 ? 'membro' : 'membros' }}</p>
+      <button
+        type="button"
+        (click)="accept()"
+        [disabled]="accepting()"
+        class="mt-6 w-full rounded-xl bg-ch-brand px-6 py-3 text-sm font-bold text-white shadow-brand-glow hover:brightness-110 transition-all cursor-pointer disabled:opacity-60"
+      >
+        Entrar no servidor
+      </button>
+    </ng-container>
+
+    <ng-container *ngIf="!loading() && !preview()">
+      <h2 class="text-xl font-bold text-ch-text-primary">{{ error() }}</h2>
+      <button
+        type="button"
+        (click)="back()"
+        class="mt-6 w-full rounded-xl bg-ch-brand px-6 py-3 text-sm font-bold text-white shadow-brand-glow hover:brightness-110 transition-all cursor-pointer"
+      >
+        Voltar
+      </button>
+    </ng-container>
+  </div>
+</div>

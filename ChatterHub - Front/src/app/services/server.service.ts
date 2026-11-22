@@ -47,9 +47,7 @@ export class ServerService {
             this._activeServerId.set(mapped[0].id);
           }
         } else {
-          // Se o usuário não tem servidores ainda, cria automaticamente o primeiro servidor
-          const uname = this.authService.currentUser().username || 'Geral';
-          this.createServer(`Servidor de ${uname}`);
+          this._activeServerId.set('');
         }
       },
       error: (err) => console.error('[ServerService] Falha ao carregar servidores:', err),
@@ -82,16 +80,48 @@ export class ServerService {
     });
   }
 
-  joinServer(serverId: string): Promise<void> {
+  createInvite(serverId: string): Promise<{ code: string; expiresAt: string }> {
     return new Promise((resolve, reject) => {
-      this.http.post<any>(`${environment.apiUrl}/servers/${serverId}/join`, {}).subscribe({
-        next: () => {
+      this.http
+        .post<{ code: string; expiresAt: string }>(`${environment.apiUrl}/servers/${serverId}/invites`, {})
+        .subscribe({
+          next: (r) => resolve(r),
+          error: (err) => reject(err?.error?.message || err?.message || 'Erro ao criar convite'),
+        });
+    });
+  }
+
+  previewInvite(code: string): Promise<{ serverId: string; serverName: string; iconUrl?: string; initials: string; memberCount: number }> {
+    return new Promise((resolve, reject) => {
+      this.http.get<any>(`${environment.apiUrl}/invites/${encodeURIComponent(code)}`).subscribe({
+        next: (r) => resolve(r),
+        error: (err) => reject(err?.error?.message || err?.message || 'Convite inválido'),
+      });
+    });
+  }
+
+  acceptInvite(code: string): Promise<Server> {
+    return new Promise((resolve, reject) => {
+      this.http.post<any>(`${environment.apiUrl}/invites/${encodeURIComponent(code)}/accept`, {}).subscribe({
+        next: (s) => {
+          const server: Server = {
+            id: s.id,
+            name: s.name,
+            iconUrl: s.iconUrl,
+            initials: s.initials,
+            hasNotification: s.hasNotification ?? false,
+          };
           this.loadServers();
-          resolve();
+          this.setActiveServer(server.id);
+          resolve(server);
         },
         error: (err) => reject(err?.error?.message || err?.message || 'Erro ao entrar no servidor'),
       });
     });
+  }
+
+  inviteUrl(code: string): string {
+    return `${window.location.origin}/convite/${code}`;
   }
 
   leaveServer(serverId: string): Promise<void> {

@@ -5,7 +5,7 @@ import { AuthService } from './services/auth.service';
 import { DmService } from './services/dm.service';
 import { ServerSidebarComponent } from './layout/server-sidebar/server-sidebar.component';
 import { ChannelSidebarComponent } from './layout/channel-sidebar/channel-sidebar.component';
-import { MainAreaComponent } from './layout/main-area/main-area.component';
+import { RouterOutlet } from '@angular/router';
 import { LoginComponent } from './layout/login/login.component';
 import { ToastContainerComponent } from './shared/toast-container/toast-container.component';
 import { DmPanelComponent } from './chat/dm-panel/dm-panel.component';
@@ -18,7 +18,7 @@ import { DmPanelComponent } from './chat/dm-panel/dm-panel.component';
     LucideAngularModule,
     ServerSidebarComponent,
     ChannelSidebarComponent,
-    MainAreaComponent,
+    RouterOutlet,
     LoginComponent,
     ToastContainerComponent,
     DmPanelComponent,

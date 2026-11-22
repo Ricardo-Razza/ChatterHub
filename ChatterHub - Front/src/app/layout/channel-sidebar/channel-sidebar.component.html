@@ -3,6 +3,11 @@
   <!-- Cabeçalho com nome do servidor -->
   <div class="flex h-14 shrink-0 items-center justify-between border-b border-ch-border px-4 font-semibold text-ch-text-primary shadow-sm">
     <span class="truncate">{{ serverService.activeServer()?.name ?? "Nenhum servidor" }}</span>
+    <button *ngIf="serverService.activeServerId()" type="button" (click)="openInvite()"
+      class="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ch-text-muted hover:text-ch-text-primary transition-colors"
+      title="Convidar pessoas" aria-label="Convidar pessoas">
+      <lucide-icon name="user-plus" [size]="18"></lucide-icon>
+    </button>
   </div>
 
   <!-- Estado vazio -->
@@ -143,3 +148,4 @@
 
 <!-- Modal criar canal -->
 <app-create-channel-modal />
+<app-invite-modal />

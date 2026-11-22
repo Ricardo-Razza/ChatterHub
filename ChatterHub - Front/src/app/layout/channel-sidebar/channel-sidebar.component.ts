@@ -10,16 +10,18 @@ import { ChatService } from '../../services/chat.service';
 import { VoicePresenceService } from '../../services/voice-presence.service';
 import { UserControlsComponent } from '../user-controls/user-controls.component';
 import { CreateChannelModalComponent } from '../create-channel-modal/create-channel-modal.component';
+import { InviteModalComponent } from '../invite-modal/invite-modal.component';
 
 @Component({
   selector: 'app-channel-sidebar',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, UserControlsComponent, CreateChannelModalComponent],
+  imports: [CommonModule, LucideAngularModule, UserControlsComponent, CreateChannelModalComponent, InviteModalComponent],
   templateUrl: './channel-sidebar.component.html',
   host: { class: 'block h-full' },
 })
 export class ChannelSidebarComponent {
   @ViewChild(CreateChannelModalComponent) createChannelModal!: CreateChannelModalComponent;
+  @ViewChild(InviteModalComponent) inviteModal!: InviteModalComponent;
 
   readonly textCollapsed = signal(false);
   readonly voiceCollapsed = signal(false);
@@ -52,6 +54,11 @@ export class ChannelSidebarComponent {
 
   addTextChannel(): void { this.createChannelModal.open('text'); }
   addVoiceChannel(): void { this.createChannelModal.open('voice'); }
+
+  openInvite(): void {
+    const serverId = this.serverService.activeServerId();
+    if (serverId) this.inviteModal.open(serverId);
+  }
 
   connectedUsers(ids: string[] | undefined) {
     return this.userService.getUsersByIds(ids ?? []);

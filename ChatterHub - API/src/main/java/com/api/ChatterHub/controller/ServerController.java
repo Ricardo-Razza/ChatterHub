@@ -1,8 +1,10 @@
 package com.api.ChatterHub.controller;
 
+import com.api.ChatterHub.dto.InviteResponse;
 import com.api.ChatterHub.dto.ServerRequest;
 import com.api.ChatterHub.dto.ServerResponse;
 import com.api.ChatterHub.dto.UserResponse;
+import com.api.ChatterHub.service.InviteService;
 import com.api.ChatterHub.service.ServerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,9 @@ public class ServerController {
     @Autowired
     private ServerService serverService;
 
+    @Autowired
+    private InviteService inviteService;
+
     @GetMapping
     public ResponseEntity<List<ServerResponse>> getServers() {
         return ResponseEntity.ok(serverService.getServersForCurrentUser());
@@ -32,6 +37,11 @@ public class ServerController {
     public ResponseEntity<Void> deleteServer(@PathVariable UUID id) {
         serverService.deleteServer(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/invites")
+    public ResponseEntity<InviteResponse> createInvite(@PathVariable UUID id) {
+        return ResponseEntity.ok(inviteService.createInvite(id));
     }
 
     @PostMapping("/{id}/leave")

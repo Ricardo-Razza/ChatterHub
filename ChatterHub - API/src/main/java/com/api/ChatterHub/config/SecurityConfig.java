@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -42,6 +43,7 @@ public class SecurityConfig {
             .cors(org.springframework.security.config.Customizer.withDefaults())
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers("/api/users/register", "/api/users/login").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/api/invites/*").permitAll();
                 // O handshake do WebSocket não carrega header Authorization; o JWT é validado no CONNECT do STOMP.
                 auth.requestMatchers("/ws/**").permitAll();
                 if (h2ConsoleEnabled) {

@@ -11,7 +11,8 @@ const res = []; const check = (n, ok, x = '') => { res.push(ok); console.log((ok
   const U = {};
   for (const n of ['a', 'b']) U[n] = (await api('/users/register', 'POST', null, { username: n + s, password: 'senhaSegura123' })).json;
   const srv = (await api('/servers', 'POST', U.a.token, { name: 'S' + s })).json;
-  await api(`/servers/${srv.id}/join`, 'POST', U.b.token);
+  const inv = (await api(`/servers/${srv.id}/invites`, 'POST', U.a.token)).json;
+  await api(`/invites/${inv.code}/accept`, 'POST', U.b.token);
   const seed = ([t, x]) => { sessionStorage.setItem('ch_token', t); sessionStorage.setItem('ch_user', JSON.stringify(x)); };
   const mkUser = (u) => [u.token, { id: u.user.id, username: u.user.username, avatarUrl: u.user.avatarUrl, status: 'online', role: u.user.role }];
 

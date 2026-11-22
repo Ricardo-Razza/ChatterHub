@@ -76,7 +76,8 @@ async function pcStats(page) {
   check('não edita perfil de outra pessoa (403)', otherProfile.status === 403, String(otherProfile.status));
 
   const server = (await api('/servers', 'POST', users.alice.token, { name: `Teste ${suffix}` })).json;
-  await api(`/servers/${server.id}/join`, 'POST', users.bob.token);
+  const inv = (await api(`/servers/${server.id}/invites`, 'POST', users.alice.token)).json;
+  await api(`/invites/${inv.code}/accept`, 'POST', users.bob.token);
   const channels = (await api(`/servers/${server.id}/channels`, 'GET', users.alice.token)).json;
   const voice = channels.find((c) => c.type === 'voice');
   const text = channels.find((c) => c.type === 'text');

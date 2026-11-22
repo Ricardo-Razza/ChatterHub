@@ -27,6 +27,7 @@ export class ChannelSidebarComponent {
   @ViewChild(InviteModalComponent) inviteModal!: InviteModalComponent;
   @ViewChild(ServerSettingsModalComponent) settingsModal!: ServerSettingsModalComponent;
 
+  readonly PERM = PERM;
   readonly textCollapsed = signal(false);
   readonly voiceCollapsed = signal(false);
 

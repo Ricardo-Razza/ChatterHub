@@ -29,7 +29,8 @@
   <!-- Conteúdo -->
   <div class="min-w-0 flex-1">
     <div *ngIf="!grouped" class="flex items-baseline gap-2">
-      <span class="text-[15px] font-semibold text-ch-text-primary hover:underline cursor-pointer">
+      <span class="text-[15px] font-semibold text-ch-text-primary hover:underline cursor-pointer"
+        [style.color]="authorColor">
         {{ authorName }}
       </span>
       <span class="text-xs text-ch-text-muted" [title]="formattedDate">{{ formattedTime }}</span>

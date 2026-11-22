@@ -5,6 +5,8 @@ import { ChannelService } from "../../services/channel.service";
 import { UserService } from "../../services/user.service";
 import { VoiceService } from "../../services/voice.service";
 import { VoiceGridComponent } from "../voice-grid/voice-grid.component";
+import { PermissionService } from "../../services/permission.service";
+import { PERM } from "../../models/role.model";
 import { ScreenPickerComponent } from "../screen-picker/screen-picker.component";
 
 /**
@@ -21,8 +23,11 @@ export class VoiceRoomComponent {
   constructor(
     readonly channelService: ChannelService,
     readonly userService: UserService,
-    readonly voiceService: VoiceService
+    readonly voiceService: VoiceService,
+    readonly perm: PermissionService
   ) {}
+
+  readonly PERM = PERM;
 
   toggleScreenShare(): void {
     void this.voiceService.toggleScreenShare();

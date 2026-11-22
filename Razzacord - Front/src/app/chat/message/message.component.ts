@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../services/auth.service';
 import { ChatService } from '../../services/chat.service';
+import { PermissionService } from '../../services/permission.service';
+import { RoleService } from '../../services/role.service';
+import { PERM } from '../../models/role.model';
 
 @Component({
   selector: 'app-message',
@@ -30,7 +33,9 @@ export class MessageComponent {
 
   constructor(
     readonly authService: AuthService,
-    private readonly chatService: ChatService
+    private readonly chatService: ChatService,
+    private readonly perm: PermissionService,
+    private readonly roleService: RoleService
   ) {}
 
   get isOwn(): boolean {
@@ -38,7 +43,11 @@ export class MessageComponent {
   }
 
   get canDelete(): boolean {
-    return this.isOwn || this.authService.isAdmin();
+    return this.isOwn || this.perm.can(PERM.MANAGE_MESSAGES);
+  }
+
+  get authorColor(): string | null {
+    return this.roleService.colorFor(this.authorId);
   }
 
   get formattedTime(): string {

@@ -3,6 +3,11 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { User } from '../../models/user.model';
 import { VoiceService } from '../../services/voice.service';
+import { PermissionService } from '../../services/permission.service';
+import { RoleService } from '../../services/role.service';
+import { ChannelService } from '../../services/channel.service';
+import { WebSocketService } from '../../services/websocket.service';
+import { PERM } from '../../models/role.model';
 
 @Component({
   selector: 'app-user-card',
@@ -20,7 +25,13 @@ export class UserCardComponent {
 
   readonly cameraVideo = viewChild<ElementRef<HTMLVideoElement>>('cameraVideo');
 
-  constructor(readonly voiceService: VoiceService) {
+  constructor(
+    readonly voiceService: VoiceService,
+    private readonly perm: PermissionService,
+    private readonly roleService: RoleService,
+    private readonly channelService: ChannelService,
+    private readonly ws: WebSocketService
+  ) {
     // viewChild como signal: o efeito roda de novo quando o <video> passa a existir (câmera ligada depois do card).
     effect(() => {
       const ref = this.cameraVideo();
@@ -34,6 +45,29 @@ export class UserCardComponent {
         }
       }
     });
+  }
+
+  private topOf(userId: string): number {
+    const member = this.roleService.members().find((m) => m.id === userId);
+    if (!member) return 0;
+    return this.roleService.roles()
+      .filter((r) => member.roleIds.includes(r.id))
+      .reduce((max, r) => Math.max(max, r.position), 0);
+  }
+
+  /** Moderar: tem MUTE_MEMBERS, alvo não é o dono nem eu, e (se não sou dono) está abaixo de mim na hierarquia. */
+  canModerate(): boolean {
+    if (!this.perm.can(PERM.MUTE_MEMBERS)) return false;
+    if (this.user.id === this.voiceService.currentUserId()) return false;
+    const member = this.roleService.members().find((m) => m.id === this.user.id);
+    if (member?.owner) return false;
+    return this.perm.isOwner() || this.topOf(this.user.id) < this.perm.topPosition();
+  }
+
+  moderate(action: 'mute' | 'disconnect'): void {
+    const channelId = this.channelService.voiceChannelId();
+    if (!channelId) return;
+    this.ws.send('/app/voice.moderate', { channelId, targetId: this.user.id, action });
   }
 
   stats() {

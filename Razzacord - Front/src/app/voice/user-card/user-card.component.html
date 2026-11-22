@@ -31,6 +31,17 @@
   <div class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 py-2 z-10">
     <span class="truncate text-xs md:text-sm font-medium text-white drop-shadow">{{ user.username }}</span>
     <div class="flex shrink-0 items-center gap-1.5">
+      <!-- Moderação de voz -->
+      <ng-container *ngIf="canModerate()">
+        <button type="button" (click)="moderate('mute')" title="Silenciar" aria-label="Silenciar participante"
+          class="hidden rounded p-0.5 text-white hover:text-ch-danger group-hover:block">
+          <lucide-icon name="mic-off" [size]="14"></lucide-icon>
+        </button>
+        <button type="button" (click)="moderate('disconnect')" title="Desconectar" aria-label="Desconectar participante"
+          class="hidden rounded p-0.5 text-white hover:text-ch-danger group-hover:block">
+          <lucide-icon name="phone-off" [size]="14"></lucide-icon>
+        </button>
+      </ng-container>
       <!-- Volume individual (só para os outros participantes) -->
       <input
         *ngIf="user.id !== voiceService.currentUserId()"

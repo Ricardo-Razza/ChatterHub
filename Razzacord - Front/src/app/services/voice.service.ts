@@ -4,6 +4,7 @@ import { Subscription } from "rxjs";
 import { ChannelService } from "./channel.service";
 import { AuthService } from "./auth.service";
 import { WebSocketService } from "./websocket.service";
+import { ToastService } from "./toast.service";
 import { User } from "../models/user.model";
 import { environment } from "../../environments/environment";
 import { MicPipeline } from "../voice/mic-pipeline";
@@ -275,7 +276,8 @@ export class VoiceService {
     private readonly channelService: ChannelService,
     private readonly auth: AuthService,
     private readonly wsService: WebSocketService,
-    private readonly http: HttpClient
+    private readonly http: HttpClient,
+    private readonly toast: ToastService
   ) {
     this.loadAudioDevices();
     if (navigator.mediaDevices?.addEventListener) {
@@ -632,7 +634,7 @@ export class VoiceService {
         error: (err) => console.error("[VoiceService] Erro no tópico de voz:", err),
       }),
       this.wsService.subscribe<any>("/user/queue/voice").subscribe({
-        next: (msg) => this.onSignal(msg),
+        next: (msg) => (msg?.type === "moderate" ? this.onModerate(msg) : this.onSignal(msg)),
         error: (err) => console.error("[VoiceService] Erro na fila de sinais:", err),
       }),
     ];
@@ -863,6 +865,18 @@ export class VoiceService {
       peer.pc.restartIce();
     } catch (e) {
       console.warn("[VoiceService] restartIce falhou:", e);
+    }
+  }
+
+  /** Moderação vinda do servidor: silenciar o microfone ou ser removido da sala. */
+  private onModerate(msg: any): void {
+    if (msg.channelId !== this.joinedChannelId) return;
+    if (msg.action === "mute") {
+      this.auth.updateCurrentUser({ isMuted: true });
+      this.toast.warning("Você foi silenciado por um moderador");
+    } else if (msg.action === "disconnect") {
+      this.channelService.leaveVoiceChannel();
+      this.toast.warning("Você foi desconectado da chamada por um moderador");
     }
   }
 

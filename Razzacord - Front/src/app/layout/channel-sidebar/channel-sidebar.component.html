@@ -3,7 +3,7 @@
   <!-- Cabeçalho com nome do servidor -->
   <div class="flex h-14 shrink-0 items-center justify-between border-b border-ch-border px-4 font-semibold text-ch-text-primary shadow-sm">
     <span class="truncate">{{ serverService.activeServer()?.name ?? "Nenhum servidor" }}</span>
-    <button *ngIf="serverService.activeServerId()" type="button" (click)="openInvite()"
+    <button *ngIf="serverService.activeServerId() && perm.can(PERM.CREATE_INVITE)" type="button" (click)="openInvite()"
       class="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded text-ch-text-muted hover:text-ch-text-primary transition-colors"
       title="Convidar pessoas" aria-label="Convidar pessoas">
       <lucide-icon name="user-plus" [size]="18"></lucide-icon>
@@ -33,7 +33,7 @@
             [class.-rotate-90]="textCollapsed()"></lucide-icon>
           <span>Canais de Texto</span>
         </button>
-        <button type="button" (click)="addTextChannel()"
+        <button *ngIf="perm.can(PERM.MANAGE_CHANNELS)" type="button" (click)="addTextChannel()"
           class="flex h-5 w-5 items-center justify-center rounded text-ch-text-muted hover:text-ch-accent transition-colors"
           title="Criar canal de texto">
           <lucide-icon name="plus" [size]="14"></lucide-icon>
@@ -73,7 +73,7 @@
             [class.-rotate-90]="voiceCollapsed()"></lucide-icon>
           <span>Canais de Voz</span>
         </button>
-        <button type="button" (click)="addVoiceChannel()"
+        <button *ngIf="perm.can(PERM.MANAGE_CHANNELS)" type="button" (click)="addVoiceChannel()"
           class="flex h-5 w-5 items-center justify-center rounded text-ch-text-muted hover:text-ch-accent transition-colors"
           title="Criar canal de voz">
           <lucide-icon name="plus" [size]="14"></lucide-icon>

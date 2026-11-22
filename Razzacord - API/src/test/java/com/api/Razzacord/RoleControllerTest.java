@@ -342,6 +342,40 @@ class RoleControllerTest {
     }
 
     @Test
+    void managerReorderWorksAfterOwnerDeletesBottomRole() {
+        Setup s = setup();
+        String order = roles(s.serverId) + "/order";
+        String low2 = call(HttpMethod.POST, roles(s.serverId), s.mgr.token(),
+                Map.of("name", "Low2", "permissions", 0)).getBody().get("id").asText();
+        // ordem: High, Gerente, Low2, Low. Dono apaga o de baixo (Low): posições compactam.
+        assertEquals(204, call(HttpMethod.DELETE, roles(s.serverId) + "/" + s.low, s.owner.token(), null).getStatusCode().value());
+        assertEquals(1, position(s.serverId, s.owner, low2));
+        assertEquals(2, position(s.serverId, s.owner, s.mgrRole));
+        assertEquals(3, position(s.serverId, s.owner, s.high));
+
+        assertEquals(200, call(HttpMethod.PUT, order, s.mgr.token(),
+                Map.of("roleIds", List.of(s.high, s.mgrRole, low2))).getStatusCode().value());
+        String low3 = call(HttpMethod.POST, roles(s.serverId), s.mgr.token(),
+                Map.of("name", "Low3", "permissions", 0)).getBody().get("id").asText();
+        assertEquals(200, call(HttpMethod.PUT, order, s.mgr.token(),
+                Map.of("roleIds", List.of(s.high, s.mgrRole, low2, low3))).getStatusCode().value());
+        assertEquals(200, call(HttpMethod.PUT, order, s.mgr.token(),
+                Map.of("roleIds", List.of(s.high, s.mgrRole, low3, low2))).getStatusCode().value());
+        assertEquals(403, call(HttpMethod.PUT, order, s.mgr.token(),
+                Map.of("roleIds", List.of(s.high, low3, s.mgrRole, low2))).getStatusCode().value());
+    }
+
+    @Test
+    void nonOwnerWithoutAnyRoleCannotCreateRole() {
+        Setup s = setup();
+        // bob não tem cargo (topPosition 0) mas ganha MANAGE_ROLES pelas permissões padrão
+        assertEquals(204, call(HttpMethod.PUT, "/api/servers/" + s.serverId + "/default-permissions", s.owner.token(),
+                Map.of("permissions", 65 | MANAGE_ROLES)).getStatusCode().value());
+        assertEquals(403, call(HttpMethod.POST, roles(s.serverId), s.bob.token(),
+                Map.of("name", "X", "permissions", 0)).getStatusCode().value());
+    }
+
+    @Test
     void deletingServerRemovesRoles() {
         Setup s = setup();
         assertEquals(204, call(HttpMethod.DELETE, "/api/servers/" + s.serverId, s.owner.token(), null).getStatusCode().value());

@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -71,7 +73,8 @@ public class RoleService {
             position = roles.stream().mapToInt(ServerRole::getPosition).max().orElse(0) + 1;
         } else {
             // O novo cargo ocupa a posição do topo do ator; o topo dele e tudo acima sobem uma posição.
-            position = Math.max(permissionService.topPosition(serverId, me.getId()), 1);
+            position = permissionService.topPosition(serverId, me.getId());
+            if (position < 1) throw ApiException.forbidden("Você não tem permissão para isso");
             for (ServerRole r : roles) {
                 if (r.getPosition() >= position) r.setPosition(r.getPosition() + 1);
             }
@@ -113,6 +116,10 @@ public class RoleService {
 
         memberRoleRepository.deleteByRoleId(roleId);
         roleRepository.delete(role);
+        List<ServerRole> above = roleRepository.findByServerIdOrderByPositionDesc(serverId).stream()
+                .filter(r -> r.getPosition() > role.getPosition()).toList();
+        above.forEach(r -> r.setPosition(r.getPosition() - 1));
+        roleRepository.saveAll(above);
         publishRoles(serverId);
     }
 
@@ -136,10 +143,10 @@ public class RoleService {
 
         if (!permissionService.isOwner(serverId, me.getId())) {
             int top = permissionService.topPosition(serverId, me.getId());
-            for (ServerRole r : roles) {
-                if (r.getPosition() >= top && newPosition.get(r.getId()) != r.getPosition()) {
-                    throw ApiException.forbidden("Você não pode mover cargos iguais ou acima do seu");
-                }
+            // Cargos do ator e acima: mesma ordem relativa e todos acima dos cargos abaixo do ator.
+            List<UUID> protectedIds = roles.stream().filter(r -> r.getPosition() >= top).map(ServerRole::getId).toList();
+            if (!roleIds.subList(0, protectedIds.size()).equals(protectedIds)) {
+                throw ApiException.forbidden("Você não pode mover cargos iguais ou acima do seu");
             }
         }
 
@@ -200,8 +207,7 @@ public class RoleService {
                     .serverId(serverId).userId(userId).roleId(roleId).build());
         }
 
-        messagingTemplate.convertAndSend("/topic/servers/" + serverId + "/events",
-                Map.of("type", "member-roles", "userId", userId.toString()));
+        publish(serverId, Map.of("type", "member-roles", "userId", userId.toString()));
         return serverService.getMemberResponse(serverId, userId);
     }
 
@@ -279,7 +285,22 @@ public class RoleService {
     }
 
     private void publishRoles(UUID serverId) {
-        messagingTemplate.convertAndSend("/topic/servers/" + serverId + "/events", Map.of("type", "roles"));
+        publish(serverId, Map.of("type", "roles"));
+    }
+
+    /** Envia só depois do commit, para quem refaz o fetch ao receber o evento não ler dado antigo. */
+    private void publish(UUID serverId, Map<String, String> payload) {
+        String destination = "/topic/servers/" + serverId + "/events";
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend(destination, payload);
+                }
+            });
+        } else {
+            messagingTemplate.convertAndSend(destination, payload);
+        }
     }
 
     private ServerRoleResponse toResponse(ServerRole r) {

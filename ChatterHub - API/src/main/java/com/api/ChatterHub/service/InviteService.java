@@ -1,5 +1,6 @@
 package com.api.ChatterHub.service;
 
+import com.api.ChatterHub.dto.InviteListItem;
 import com.api.ChatterHub.dto.InvitePreviewResponse;
 import com.api.ChatterHub.dto.InviteResponse;
 import com.api.ChatterHub.dto.ServerResponse;
@@ -13,10 +14,12 @@ import com.api.ChatterHub.repository.ServerMemberRepository;
 import com.api.ChatterHub.repository.ServerRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -56,15 +59,13 @@ public class InviteService {
         Server server = serverRepository.findById(invite.getServerId())
                 .orElseThrow(() -> ApiException.notFound(INVALID));
         return InvitePreviewResponse.builder()
-                .serverId(server.getId())
                 .serverName(server.getName())
                 .iconUrl(server.getIconUrl())
                 .initials(server.getInitials())
-                .memberCount(serverMemberRepository.findByServerId(server.getId()).size())
+                .memberCount((int) serverMemberRepository.countByServerId(server.getId()))
                 .build();
     }
 
-    @Transactional
     public ServerResponse accept(String code) {
         ServerInvite invite = requireUsable(code);
         User user = userService.getCurrentUserModel();
@@ -72,14 +73,50 @@ public class InviteService {
                 .orElseThrow(() -> ApiException.notFound(INVALID));
 
         if (serverMemberRepository.findByServerIdAndUserId(server.getId(), user.getId()).isEmpty()) {
-            serverMemberRepository.save(ServerMember.builder()
-                    .serverId(server.getId())
-                    .userId(user.getId())
-                    .build());
+            try {
+                serverMemberRepository.saveAndFlush(ServerMember.builder()
+                        .serverId(server.getId())
+                        .userId(user.getId())
+                        .build());
+            } catch (DataIntegrityViolationException e) {
+                // aceite concorrente: já é membro
+                return serverService.mapToServerResponse(server);
+            }
             invite.setUses(invite.getUses() + 1);
             inviteRepository.save(invite);
         }
         return serverService.mapToServerResponse(server);
+    }
+
+    public List<InviteListItem> listInvites(UUID serverId) {
+        requireOwner(serverId);
+        return inviteRepository.findByServerIdAndRevokedFalseAndExpiresAtAfter(serverId, LocalDateTime.now()).stream()
+                .map(i -> InviteListItem.builder()
+                        .code(i.getCode())
+                        .expiresAt(i.getExpiresAt())
+                        .uses(i.getUses())
+                        .createdBy(i.getCreatedBy())
+                        .build())
+                .toList();
+    }
+
+    public void revoke(String code) {
+        ServerInvite invite = code == null ? null : inviteRepository.findByCode(code).orElse(null);
+        if (invite == null) {
+            throw ApiException.notFound(INVALID);
+        }
+        requireOwner(invite.getServerId());
+        invite.setRevoked(true);
+        inviteRepository.save(invite);
+    }
+
+    private void requireOwner(UUID serverId) {
+        User user = userService.getCurrentUserModel();
+        Server server = serverRepository.findById(serverId)
+                .orElseThrow(() -> ApiException.notFound("Servidor não encontrado"));
+        if (!user.getId().equals(server.getOwnerId())) {
+            throw ApiException.forbidden("Apenas o dono pode gerenciar convites");
+        }
     }
 
     private ServerInvite requireUsable(String code) {

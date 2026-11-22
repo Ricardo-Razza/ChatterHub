@@ -96,6 +96,26 @@ class InviteControllerTest {
     }
 
     @Test
+    void listarERevogarSomenteDono() {
+        String alice = token("alice");
+        String bob = token("bob");
+        String id = createServer(alice);
+        String code = createInvite(alice, id);
+        call(HttpMethod.POST, "/api/invites/" + code + "/accept", bob, null);
+
+        ResponseEntity<JsonNode> list = call(HttpMethod.GET, "/api/servers/" + id + "/invites", alice, null);
+        assertEquals(200, list.getStatusCode().value());
+        boolean found = false;
+        for (JsonNode n : list.getBody()) if (code.equals(n.get("code").asText())) found = true;
+        assertTrue(found);
+
+        assertEquals(403, call(HttpMethod.GET, "/api/servers/" + id + "/invites", bob, null).getStatusCode().value());
+        assertEquals(403, call(HttpMethod.DELETE, "/api/invites/" + code, bob, null).getStatusCode().value());
+        assertEquals(204, call(HttpMethod.DELETE, "/api/invites/" + code, alice, null).getStatusCode().value());
+        assertEquals(404, call(HttpMethod.GET, "/api/invites/" + code, null, null).getStatusCode().value());
+    }
+
+    @Test
     void fluxoCompleto() {
         String alice = token("alice");
         String bob = token("bob");

@@ -10,5 +10,6 @@ public interface ServerMemberRepository extends JpaRepository<ServerMember, UUID
     List<ServerMember> findByUserId(UUID userId);
     List<ServerMember> findByServerId(UUID serverId);
     Optional<ServerMember> findByServerIdAndUserId(UUID serverId, UUID userId);
+    long countByServerId(UUID serverId);
     void deleteByServerId(UUID serverId);
 }

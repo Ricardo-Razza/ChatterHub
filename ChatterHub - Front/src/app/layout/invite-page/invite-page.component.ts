@@ -1,15 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ServerService } from '../../services/server.service';
-
-interface InvitePreview {
-  serverId: string;
-  serverName: string;
-  iconUrl?: string;
-  initials: string;
-  memberCount: number;
-}
+import { InvitePreview, ServerService } from '../../services/server.service';
 
 @Component({
   selector: 'app-invite-page',

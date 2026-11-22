@@ -4,6 +4,13 @@ import { Server } from '../models/server.model';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
+export interface InvitePreview {
+  serverName: string;
+  iconUrl?: string;
+  initials: string;
+  memberCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ServerService {
   private readonly _servers = signal<Server[]>([]);
@@ -91,9 +98,9 @@ export class ServerService {
     });
   }
 
-  previewInvite(code: string): Promise<{ serverId: string; serverName: string; iconUrl?: string; initials: string; memberCount: number }> {
+  previewInvite(code: string): Promise<InvitePreview> {
     return new Promise((resolve, reject) => {
-      this.http.get<any>(`${environment.apiUrl}/invites/${encodeURIComponent(code)}`).subscribe({
+      this.http.get<InvitePreview>(`${environment.apiUrl}/invites/${encodeURIComponent(code)}`).subscribe({
         next: (r) => resolve(r),
         error: (err) => reject(err?.error?.message || err?.message || 'Convite inválido'),
       });

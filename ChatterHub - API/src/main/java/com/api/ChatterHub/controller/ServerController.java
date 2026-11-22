@@ -44,6 +44,11 @@ public class ServerController {
         return ResponseEntity.ok(inviteService.createInvite(id));
     }
 
+    @GetMapping("/{id}/invites")
+    public ResponseEntity<java.util.List<com.api.ChatterHub.dto.InviteListItem>> listInvites(@PathVariable UUID id) {
+        return ResponseEntity.ok(inviteService.listInvites(id));
+    }
+
     @PostMapping("/{id}/leave")
     public ResponseEntity<Void> leaveServer(@PathVariable UUID id) {
         serverService.leaveServer(id);

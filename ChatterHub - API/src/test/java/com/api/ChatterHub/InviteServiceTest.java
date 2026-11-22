@@ -8,7 +8,9 @@ import com.api.ChatterHub.dto.ServerRequest;
 import com.api.ChatterHub.dto.ServerResponse;
 import com.api.ChatterHub.exception.ApiException;
 import com.api.ChatterHub.model.ServerInvite;
+import com.api.ChatterHub.model.ServerMember;
 import com.api.ChatterHub.repository.ServerInviteRepository;
+import com.api.ChatterHub.repository.ServerMemberRepository;
 import com.api.ChatterHub.service.InviteService;
 import com.api.ChatterHub.service.ServerService;
 import com.api.ChatterHub.service.UserService;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,6 +36,7 @@ class InviteServiceTest {
     @Autowired ServerService serverService;
     @Autowired InviteService inviteService;
     @Autowired ServerInviteRepository inviteRepository;
+    @Autowired ServerMemberRepository serverMemberRepository;
 
     String alice;
     String bob;
@@ -130,6 +134,47 @@ class InviteServiceTest {
         InvitePreviewResponse p = inviteService.preview(code);
         assertEquals(server.getName(), p.getServerName());
         assertEquals(2, p.getMemberCount());
+    }
+
+    @Test
+    void membroDuplicadoERejeitadoPelaConstraint() {
+        authenticateAs(bob);
+        inviteService.accept(authCode());
+        UUID bobId = userService.getCurrentUserModel().getId();
+        assertThrows(DataIntegrityViolationException.class, () -> serverMemberRepository.saveAndFlush(
+                ServerMember.builder().serverId(server.getId()).userId(bobId).build()));
+    }
+
+    private String authCode() {
+        String current = SecurityContextHolder.getContext().getAuthentication().getName();
+        authenticateAs(alice);
+        String code = inviteService.createInvite(server.getId()).getCode();
+        authenticateAs(current);
+        return code;
+    }
+
+    @Test
+    void donoListaConvitesAtivos() {
+        String code = inviteService.createInvite(server.getId()).getCode();
+        assertTrue(inviteService.listInvites(server.getId()).stream().anyMatch(i -> i.getCode().equals(code)));
+    }
+
+    @Test
+    void naoDonoNaoListaNemRevoga() {
+        String code = inviteService.createInvite(server.getId()).getCode();
+        authenticateAs(bob);
+        inviteService.accept(code);
+        assertStatus(HttpStatus.FORBIDDEN, () -> inviteService.listInvites(server.getId()));
+        assertStatus(HttpStatus.FORBIDDEN, () -> inviteService.revoke(code));
+    }
+
+    @Test
+    void donoRevogaConvite() {
+        String code = inviteService.createInvite(server.getId()).getCode();
+        inviteService.revoke(code);
+        assertStatus(HttpStatus.NOT_FOUND, () -> inviteService.preview(code));
+        assertTrue(inviteService.listInvites(server.getId()).stream().noneMatch(i -> i.getCode().equals(code)));
+        assertStatus(HttpStatus.NOT_FOUND, () -> inviteService.revoke("naoexiste"));
     }
 
     private AuthRequest cred(String username) {

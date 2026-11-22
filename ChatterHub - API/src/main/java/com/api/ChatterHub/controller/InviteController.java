@@ -19,6 +19,12 @@ public class InviteController {
         return ResponseEntity.ok(inviteService.preview(code));
     }
 
+    @DeleteMapping("/{code}")
+    public ResponseEntity<Void> revoke(@PathVariable String code) {
+        inviteService.revoke(code);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{code}/accept")
     public ResponseEntity<ServerResponse> accept(@PathVariable String code) {
         return ResponseEntity.ok(inviteService.accept(code));

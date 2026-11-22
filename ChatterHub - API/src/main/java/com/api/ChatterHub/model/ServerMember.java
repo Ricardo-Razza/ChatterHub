@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "server_members")
+@Table(name = "server_members", uniqueConstraints = @UniqueConstraint(columnNames = {"server_id", "user_id"}))
 @Data
 @Builder
 @NoArgsConstructor

@@ -1,39 +1,36 @@
-<div *ngIf="visible()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-     (click)="onBackdropClick($event)">
-  <div class="w-full max-w-sm rounded-xl bg-ch-bg-dark p-6 shadow-2xl border border-ch-border" (click)="$event.stopPropagation()">
-    <h2 class="mb-1 text-xl font-bold text-ch-text-primary">Criar Canal</h2>
-    <p class="mb-5 text-sm text-ch-text-muted">Adicione um canal ao servidor.</p>
+<div *ngIf="visible()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" (click)="close()">
+  <form (ngSubmit)="submit()" (click)="$event.stopPropagation()"
+    class="grid w-full max-w-md gap-4 rounded-xl border border-ch-border bg-ch-bg-dark p-6 text-sm text-ch-text-primary shadow-2xl">
+    <h2 class="text-xl font-bold">{{ editing ? 'Editar canal' : 'Criar canal' }}</h2>
 
-    <form (ngSubmit)="submit()">
-      <!-- Tipo -->
-      <div class="mb-4 flex gap-2">
-        <button type="button" (click)="channelType = 'text'"
-          class="flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold border-2 transition-all"
-          [ngClass]="channelType === 'text' ? 'border-ch-brand bg-ch-brand/20 text-ch-text-primary' : 'border-ch-border text-ch-text-muted hover:text-ch-text-primary'">
-          <lucide-icon name="hash" [size]="16"></lucide-icon> Texto
-        </button>
-        <button type="button" (click)="channelType = 'voice'"
-          class="flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold border-2 transition-all"
-          [ngClass]="channelType === 'voice' ? 'border-ch-brand bg-ch-brand/20 text-ch-text-primary' : 'border-ch-border text-ch-text-muted hover:text-ch-text-primary'">
-          <lucide-icon name="volume-2" [size]="16"></lucide-icon> Voz
-        </button>
-      </div>
+    <div class="grid gap-1">
+      <label for="channel-type">Tipo</label>
+      <select id="channel-type" [(ngModel)]="channelType" name="type" class="rounded-md border border-ch-border bg-ch-bg-darker p-2">
+        <option *ngIf="editing?.type !== 'voice'" value="text">Texto</option>
+        <option *ngIf="!editing || editing.type === 'voice'" value="voice">Voz</option>
+        <option *ngIf="editing?.type !== 'voice'" value="announcement">Anúncios</option>
+      </select>
+    </div>
+    <label class="grid gap-1">Nome
+      <input [(ngModel)]="name" name="channelName" required maxlength="60"
+        class="rounded-md border border-ch-border bg-ch-bg-darker p-2" />
+    </label>
+    <label class="grid gap-1">Assunto
+      <textarea [(ngModel)]="topic" name="topic" rows="2" maxlength="200"
+        class="rounded-md border border-ch-border bg-ch-bg-darker p-2"></textarea>
+    </label>
+    <label class="grid gap-1">Categoria
+      <input [(ngModel)]="category" name="category" maxlength="60"
+        class="rounded-md border border-ch-border bg-ch-bg-darker p-2" />
+    </label>
 
-      <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-ch-text-muted">Nome do Canal</label>
-      <input type="text" [(ngModel)]="name" name="channelName" required maxlength="40"
-        [placeholder]="channelType === 'text' ? 'ex: geral' : 'ex: Sala Geral'"
-        class="mb-4 w-full rounded-md bg-ch-bg-darker px-3 py-2.5 text-sm text-ch-text-primary placeholder:text-ch-text-muted outline-none ring-1 ring-ch-border focus:ring-ch-brand transition-all" />
-
-      <div class="flex gap-2 justify-end">
-        <button type="button" (click)="close()"
-          class="rounded-md px-4 py-2 text-sm font-semibold text-ch-text-muted hover:text-ch-text-primary transition-colors">
-          Cancelar
-        </button>
-        <button type="submit" [disabled]="!name.trim()"
-          class="rounded-md bg-ch-brand px-5 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-40 transition-all">
-          Criar
-        </button>
-      </div>
-    </form>
-  </div>
+    <div class="flex justify-end gap-2">
+      <button type="button" (click)="close()" [disabled]="saving()"
+        class="rounded-md px-4 py-2 font-semibold text-ch-text-muted hover:text-ch-text-primary">Cancelar</button>
+      <button type="submit" [disabled]="!name.trim() || saving()"
+        class="rounded-md bg-ch-brand px-5 py-2 font-semibold text-white hover:brightness-110 disabled:opacity-40">
+        {{ editing ? 'Salvar' : 'Criar' }}
+      </button>
+    </div>
+  </form>
 </div>

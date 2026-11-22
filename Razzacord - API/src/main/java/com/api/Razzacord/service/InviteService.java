@@ -16,12 +16,12 @@ import com.api.Razzacord.repository.ServerRepository;
 import com.api.Razzacord.security.PermissionService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -40,6 +40,8 @@ public class InviteService {
     @Autowired private UserService userService;
     @Autowired private ServerService serverService;
     @Autowired private PermissionService permissionService;
+    @Autowired private MessageService messageService;
+    @Autowired private ServerEventPublisher eventPublisher;
 
     @Transactional
     public InviteResponse createInvite(UUID serverId) {
@@ -62,31 +64,34 @@ public class InviteService {
         return InvitePreviewResponse.builder()
                 .serverName(server.getName())
                 .iconUrl(server.getIconUrl())
+                .bannerUrl(server.getBannerUrl())
+                .description(server.getDescription())
                 .initials(server.getInitials())
                 .memberCount((int) serverMemberRepository.countByServerId(server.getId()))
                 .build();
     }
 
+    @Transactional
     public ServerResponse accept(String code) {
-        ServerInvite invite = requireUsable(code);
         User user = userService.getCurrentUserModel();
-        Server server = serverRepository.findById(invite.getServerId())
-                .orElseThrow(() -> ApiException.notFound(INVALID));
-
+        Server server = lockInviteServer(code);
+        ServerInvite invite = requireUsable(code);
         if (serverMemberRepository.findByServerIdAndUserId(server.getId(), user.getId()).isEmpty()) {
-            try {
-                serverMemberRepository.saveAndFlush(ServerMember.builder()
-                        .serverId(server.getId())
-                        .userId(user.getId())
-                        .build());
-            } catch (DataIntegrityViolationException e) {
-                // aceite concorrente: já é membro
-                return serverService.mapToServerResponse(server);
-            }
+            serverMemberRepository.save(ServerMember.builder()
+                    .serverId(server.getId())
+                    .userId(user.getId())
+                    .build());
             invite.setUses(invite.getUses() + 1);
-            inviteRepository.save(invite);
+            if (server.getSystemChannelId() != null) {
+                messageService.announceJoin(server.getSystemChannelId(), user);
+            }
+            eventPublisher.publish(server.getId(), Map.of("type", "member-joined"));
         }
         return serverService.mapToServerResponse(server);
+    }
+
+    private Server lockInviteServer(String code) {
+        return serverRepository.lockByInviteCode(code).orElseThrow(() -> ApiException.notFound(INVALID));
     }
 
     public List<InviteListItem> listInvites(UUID serverId) {
@@ -101,7 +106,9 @@ public class InviteService {
                 .toList();
     }
 
+    @Transactional
     public void revoke(String code) {
+        lockInviteServer(code);
         ServerInvite invite = code == null ? null : inviteRepository.findByCode(code).orElse(null);
         if (invite == null) {
             throw ApiException.notFound(INVALID);

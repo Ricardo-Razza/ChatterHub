@@ -15,6 +15,10 @@ public class ServerResponse {
     private UUID id;
     private String name;
     private String iconUrl;
+    private String bannerUrl;
+    private String description;
+    private String accentColor;
+    private UUID systemChannelId;
     private String initials;
     @Builder.Default
     private boolean hasNotification = false;

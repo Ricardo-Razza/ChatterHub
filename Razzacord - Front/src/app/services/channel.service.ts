@@ -1,9 +1,13 @@
 import { Injectable, computed, signal, effect } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { WebSocketService } from './websocket.service';
 import { HttpClient } from '@angular/common/http';
 import { Channel, ChannelType } from '../models/channel.model';
 import { ServerService } from './server.service';
 import { ChatService } from './chat.service';
 import { environment } from '../../environments/environment';
+
+export type ChannelDetails = Pick<Channel, 'name' | 'type' | 'topic' | 'category'>;
 
 export type MainAreaMode = 'text' | 'voice' | 'dm';
 
@@ -22,16 +26,24 @@ export class ChannelService {
   readonly voiceChannelId = this._voiceChannelId.asReadonly();
   readonly voiceChannelName = this._voiceChannelName.asReadonly();
 
+  private loadRevision = 0;
+
   constructor(
     private readonly http: HttpClient,
     private readonly serverService: ServerService,
-    private readonly chatService: ChatService
+    private readonly chatService: ChatService,
+    private readonly ws: WebSocketService
   ) {
     // Carrega canais sempre que o servidor ativo mudar
-    effect(() => {
+    effect((onCleanup) => {
       const serverId = this.serverService.activeServerId();
       if (serverId) {
         this.loadChannelsByServer(serverId);
+        const subscription = this.ws.subscribe<{ type: string }>(`/topic/servers/${serverId}/events`).subscribe((event) => {
+          if (event.type === 'channels-updated') this.loadChannelsByServer(serverId);
+          if (event.type === 'server-updated') this.serverService.loadServers();
+        });
+        onCleanup(() => subscription.unsubscribe());
       } else {
         this._channels.set([]);
         this._activeChannelId.set('');
@@ -51,63 +63,47 @@ export class ChannelService {
   }
 
   loadChannelsByServer(serverId: string): void {
+    const revision = ++this.loadRevision;
     this.http
-      .get<any[]>(`${environment.apiUrl}/servers/${serverId}/channels`)
+      .get<Channel[]>(`${environment.apiUrl}/servers/${serverId}/channels`)
       .subscribe({
-        next: (data) => {
-          const mapped: Channel[] = data.map((c) => ({
-            id: c.id,
-            serverId: c.serverId,
-            name: c.name,
-            type: (c.type ? c.type.toLowerCase() : 'text') as ChannelType,
-            connectedUserIds: c.connectedUserIds ?? [],
-            unread: false,
-          }));
-
-          this._channels.set(mapped);
-
-          const exists = mapped.some((c) => c.id === this._activeChannelId());
-          if (!exists) {
-            const firstText = mapped.find((c) => c.type === 'text');
-            if (firstText) {
-              this.selectTextChannel(firstText.id);
-            } else if (mapped.length > 0) {
-              this._activeChannelId.set(mapped[0].id);
-            } else {
-              this._activeChannelId.set('');
-            }
+        next: (channels) => {
+          if (revision !== this.loadRevision || serverId !== this.serverService.activeServerId()) return;
+          const wasHere = this._channels().some((channel) => channel.id === this._voiceChannelId() && channel.serverId === serverId);
+          this._channels.set(channels);
+          const voice = channels.find((channel) => channel.id === this._voiceChannelId());
+          if (voice) this._voiceChannelName.set(voice.name);
+          else if (wasHere) this.leaveVoiceChannel();
+          if (!channels.some((channel) => channel.id === this._activeChannelId())) {
+            this.selectTextChannel(channels.find((channel) => channel.type !== 'voice')?.id ?? '');
           }
         },
         error: (err) => console.error('[ChannelService] Falha ao carregar canais:', err),
       });
   }
 
-  createChannel(name: string, type: ChannelType): void {
-    const serverId = this.serverService.activeServerId();
-    if (!serverId) return;
+  async saveChannel(serverId: string, details: ChannelDetails, id?: string): Promise<void> {
+    const url = `${environment.apiUrl}/channels`;
+    const response = id
+      ? this.http.put<Channel>(`${url}/${id}`, details)
+      : this.http.post<Channel>(url, { ...details, serverId });
+    const channel = await firstValueFrom(response);
+    if (serverId !== this.serverService.activeServerId()) return;
+    this.loadChannelsByServer(serverId);
+    if (!id && channel.type !== 'voice') this.selectTextChannel(channel.id);
+  }
 
-    this.http
-      .post<any>(`${environment.apiUrl}/channels`, {
-        name,
-        type: type.toUpperCase(),
-        serverId,
-      })
-      .subscribe({
-        next: (created) => {
-          const newChan: Channel = {
-            id: created.id,
-            serverId: created.serverId,
-            name: created.name,
-            type: (created.type ? created.type.toLowerCase() : 'text') as ChannelType,
-            connectedUserIds: created.connectedUserIds ?? [],
-          };
-          this._channels.update((list) => [...list, newChan]);
-          if (newChan.type === 'text') {
-            this.selectTextChannel(newChan.id);
-          }
-        },
-        error: (err) => console.error('[ChannelService] Falha ao criar canal:', err),
-      });
+  async deleteChannel(channel: Channel): Promise<void> {
+    await firstValueFrom(this.http.delete<void>(`${environment.apiUrl}/channels/${channel.id}`));
+    if (channel.serverId === this.serverService.activeServerId()) {
+      this.loadChannelsByServer(channel.serverId);
+      this.serverService.loadServers();
+    }
+  }
+
+  async reorderChannels(serverId: string, ids: string[]): Promise<void> {
+    await firstValueFrom(this.http.put<Channel[]>(`${environment.apiUrl}/servers/${serverId}/channels/order`, ids));
+    if (serverId === this.serverService.activeServerId()) this.loadChannelsByServer(serverId);
   }
 
   readonly channelsForActiveServer = computed<Channel[]>(() => {
@@ -116,7 +112,7 @@ export class ChannelService {
   });
 
   readonly textChannels = computed<Channel[]>(() =>
-    this.channelsForActiveServer().filter((c) => c.type === 'text')
+    this.channelsForActiveServer().filter((c) => c.type !== 'voice')
   );
 
   readonly voiceChannels = computed<Channel[]>(() =>
@@ -156,7 +152,7 @@ export class ChannelService {
       if (firstText) {
         this.selectTextChannel(firstText.id);
       } else {
-        this._mainAreaMode.set('text');
+        this.selectTextChannel('');
       }
     }
   }

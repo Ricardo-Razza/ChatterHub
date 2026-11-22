@@ -20,6 +20,7 @@ export class MessageComponent {
   @Input({ required: true }) authorName!: string;
   @Input({ required: true }) createdAt!: Date;
   @Input({ required: true }) content!: string;
+  @Input() systemMessage = false;
   @Input() grouped = false;
   @Input() edited = false;
   @Input() deleted = false;
@@ -39,7 +40,7 @@ export class MessageComponent {
   ) {}
 
   get isOwn(): boolean {
-    return this.authService.currentUser().id === this.authorId;
+    return !this.systemMessage && this.authService.currentUser().id === this.authorId;
   }
 
   get canDelete(): boolean {

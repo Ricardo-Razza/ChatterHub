@@ -211,7 +211,7 @@ public class RoleService {
     @Transactional
     public void setDefaultPermissions(UUID serverId, Long permissions) {
         User me = userService.getCurrentUserModel();
-        Server server = serverRepository.findById(serverId)
+        Server server = serverRepository.lockById(serverId)
                 .orElseThrow(() -> ApiException.notFound("Servidor não encontrado"));
         if (!server.getOwnerId().equals(me.getId())) {
             throw ApiException.forbidden("Apenas o dono pode alterar as permissões padrão");

@@ -2,12 +2,10 @@
 
   <!-- Header do canal -->
   <header class="flex h-14 shrink-0 items-center gap-2 border-b border-ch-border px-4 shadow-sm">
-    <lucide-icon name="hash" [size]="20" class="text-ch-text-muted"></lucide-icon>
+    <lucide-icon [name]="channelService.activeChannel()?.type === 'announcement' ? 'megaphone' : 'hash'" [size]="20" class="text-ch-text-muted"></lucide-icon>
     <h1 class="font-semibold text-ch-text-primary">{{ channelService.activeChannel()?.name }}</h1>
-    <div class="mx-2 h-6 w-px bg-ch-border"></div>
-    <p class="hidden truncate text-sm text-ch-text-muted sm:block">
-      Bem-vindo(a) ao canal! Fiquem à vontade para conversar.
-    </p>
+    <p *ngIf="channelService.activeChannel()?.topic as topic" [title]="topic"
+      class="ml-2 hidden truncate border-l border-ch-border pl-3 text-sm text-ch-text-muted sm:block">{{ topic }}</p>
     <div class="ml-auto flex items-center gap-4 text-ch-text-muted">
       <button type="button" class="hover:text-ch-text-primary transition-colors" aria-label="Membros">
         <lucide-icon name="users" [size]="20"></lucide-icon>
@@ -44,6 +42,7 @@
         [authorName]="message.authorName"
         [createdAt]="message.createdAt"
         [content]="message.content"
+        [systemMessage]="!!message.systemMessage"
         [grouped]="!!message.grouped"
         [edited]="!!message.edited"
         [deleted]="!!message.deleted"
@@ -57,7 +56,7 @@
   </div>
 
   <!-- Banner de edição ativa -->
-  <div *ngIf="editingMessage()"
+  <div *ngIf="canPost && editingMessage()"
     class="shrink-0 mx-4 mb-1 flex items-center gap-2 rounded-lg bg-ch-brand/10 border border-ch-brand/30 px-3 py-1.5 text-xs text-ch-brand-light">
     <lucide-icon name="pencil" [size]="13" />
     <span>Editando mensagem</span>
@@ -68,7 +67,10 @@
   </div>
 
   <!-- Campo de digitação -->
-  <app-chat-input
+  <p *ngIf="!canPost" class="border-t border-ch-border px-4 py-3 text-sm text-ch-text-muted">
+    Somente membros com permissão para gerenciar mensagens podem publicar anúncios.
+  </p>
+  <app-chat-input *ngIf="canPost"
     [channelName]="channelService.activeChannel()?.name ?? ''"
     [editingContent]="editingMessage()?.content ?? null"
     (send)="onSend($event)"

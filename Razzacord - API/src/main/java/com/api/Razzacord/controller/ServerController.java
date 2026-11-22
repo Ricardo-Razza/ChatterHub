@@ -33,6 +33,11 @@ public class ServerController {
         return ResponseEntity.ok(serverService.createServer(request));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ServerResponse> updateServer(@PathVariable UUID id, @RequestBody ServerRequest request) {
+        return ResponseEntity.ok(serverService.updateServer(id, request));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteServer(@PathVariable UUID id) {
         serverService.deleteServer(id);

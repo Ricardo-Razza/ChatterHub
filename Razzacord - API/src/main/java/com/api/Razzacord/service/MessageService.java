@@ -4,6 +4,7 @@ import com.api.Razzacord.dto.MessageRequest;
 import com.api.Razzacord.dto.MessageResponse;
 import com.api.Razzacord.exception.ApiException;
 import com.api.Razzacord.model.Channel;
+import com.api.Razzacord.model.ChannelType;
 import com.api.Razzacord.model.Message;
 import com.api.Razzacord.model.User;
 import com.api.Razzacord.repository.MessageRepository;
@@ -39,6 +40,9 @@ public class MessageService {
     @Autowired
     private PermissionService permissionService;
 
+    @Autowired
+    private ServerEventPublisher eventPublisher;
+
     public List<MessageResponse> getMessages(UUID channelId, int page, int size, User viewer) {
         accessService.requireChannelMember(channelId, viewer);
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
@@ -58,7 +62,8 @@ public class MessageService {
             throw ApiException.badRequest("channelId obrigatório");
         }
         String content = validContent(request.getContent());
-        accessService.requireChannelMember(request.getChannelId(), author);
+        Channel channel = accessService.requireChannelMember(request.getChannelId(), author);
+        requirePostingPermission(channel, author);
 
         // O autor é sempre quem está autenticado; authorId vindo do cliente é ignorado.
         Message message = Message.builder()
@@ -73,7 +78,9 @@ public class MessageService {
         Message message = messageRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Mensagem não encontrada"));
 
-        if (!message.getAuthorId().equals(editor.getId())) {
+        Channel channel = accessService.requireChannelMember(message.getChannelId(), editor);
+        requirePostingPermission(channel, editor);
+        if (message.isSystemMessage() || !message.getAuthorId().equals(editor.getId())) {
             throw ApiException.forbidden("Apenas o autor pode editar");
         }
         if (message.isDeleted()) {
@@ -92,7 +99,7 @@ public class MessageService {
                 .orElseThrow(() -> ApiException.notFound("Mensagem não encontrada"));
 
         Channel channel = accessService.requireChannelMember(message.getChannelId(), requester);
-        boolean author = message.getAuthorId().equals(requester.getId());
+        boolean author = !message.isSystemMessage() && message.getAuthorId().equals(requester.getId());
         if (!author && !permissionService.has(channel.getServerId(), requester.getId(), Permission.MANAGE_MESSAGES)) {
             throw ApiException.forbidden("Sem permissão para apagar esta mensagem");
         }
@@ -102,6 +109,22 @@ public class MessageService {
         message.setDeleted(true);
 
         return mapToMessageResponse(messageRepository.save(message));
+    }
+
+    public void announceJoin(UUID channelId, User user) {
+        Message message = messageRepository.save(Message.builder()
+                .channelId(channelId)
+                .authorId(user.getId())
+                .content(user.getUsername() + " entrou no servidor")
+                .systemMessage(true)
+                .build());
+        eventPublisher.publishAfterCommit("/topic/channels/" + channelId, mapToMessageResponse(message));
+    }
+
+    private void requirePostingPermission(Channel channel, User user) {
+        if (channel.getType() == ChannelType.ANNOUNCEMENT) {
+            permissionService.require(channel.getServerId(), user.getId(), Permission.MANAGE_MESSAGES);
+        }
     }
 
     public void deleteMessagesByChannelId(UUID channelId) {
@@ -118,6 +141,8 @@ public class MessageService {
                 .authorName(author != null ? author.getUsername() : "Unknown")
                 .authorAvatarUrl(author != null ? author.getAvatarUrl() : "")
                 .content(message.getContent())
+                .systemMessage(message.isSystemMessage())
+                .deleted(message.isDeleted())
                 .createdAt(message.getCreatedAt())
                 .edited(message.isEdited())
                 .editedAt(message.getEditedAt())

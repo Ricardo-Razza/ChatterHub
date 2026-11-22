@@ -22,6 +22,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -95,6 +96,65 @@ class PermissionEnforcementTest {
 
     private boolean isMember(U viewer, String serverId, U target) {
         return member(viewer, serverId, target) != null;
+    }
+
+    @Test
+    void customizationUsesServerAndChannelPermissions() {
+        U owner = user("owner"), bob = user("bob");
+        String id = createServer(owner);
+        String server = "/api/servers/" + id;
+        join(owner, id, bob);
+
+        JsonNode channels = call(HttpMethod.GET, server + "/channels", owner.token(), null).getBody();
+        String text = channels.get(0).get("id").asText();
+        String voice = channels.get(1).get("id").asText();
+        Map<String, String> settings = Map.of("name", "Comunidade", "description", "Regras e novidades",
+                "accentColor", "#336699", "bannerUrl", "https://example.com/banner.png", "systemChannelId", text);
+
+        assertEquals(403, status(HttpMethod.PUT, server, bob, settings));
+        assertEquals(400, status(HttpMethod.PUT, server, owner, Map.of("name", "srv", "systemChannelId", voice)));
+        assertEquals(400, status(HttpMethod.PUT, server, owner, Map.of("name", "srv", "systemChannelId", UUID.randomUUID())));
+        assign(owner, id, bob, createRole(owner, id, "Configurações", MANAGE_SERVER | MANAGE_CHANNELS));
+        assertEquals(200, status(HttpMethod.PUT, server, bob, settings));
+
+        String code = invite(owner, id);
+        JsonNode preview = call(HttpMethod.GET, "/api/invites/" + code, null, null).getBody();
+        assertEquals(settings.get("bannerUrl"), preview.get("bannerUrl").asText());
+        assertEquals(settings.get("description"), preview.get("description").asText());
+
+        String channel = "/api/channels/" + text;
+        Map<String, String> details = Map.of("name", "avisos", "type", "announcement", "topic", "Novidades", "category", "Informações");
+        U guest = user("guest");
+        String accept = "/api/invites/" + code + "/accept";
+        CompletableFuture<Integer> firstAccept = CompletableFuture.supplyAsync(() -> status(HttpMethod.POST, accept, guest, null));
+        CompletableFuture<Integer> secondAccept = CompletableFuture.supplyAsync(() -> status(HttpMethod.POST, accept, guest, null));
+        assertEquals(200, firstAccept.join());
+        assertEquals(200, secondAccept.join());
+        assertEquals(200, status(HttpMethod.POST, accept, guest, null));
+        assertEquals(403, status(HttpMethod.PUT, channel, guest, details));
+        assertEquals(200, status(HttpMethod.PUT, channel, bob, details));
+
+        String order = server + "/channels/order";
+        assertEquals(403, status(HttpMethod.PUT, order, guest, List.of(voice, text)));
+        assertEquals(400, status(HttpMethod.PUT, order, bob, List.of(voice, voice)));
+        assertEquals(200, status(HttpMethod.PUT, order, bob, List.of(voice, text)));
+        JsonNode reordered = call(HttpMethod.GET, server + "/channels", guest.token(), null).getBody();
+        assertEquals(voice, reordered.get(0).get("id").asText());
+        assertEquals("announcement", reordered.get(1).get("type").asText());
+        assertEquals("Novidades", reordered.get(1).get("topic").asText());
+        assertEquals("Informações", reordered.get(1).get("category").asText());
+
+        String messages = channel + "/messages";
+        JsonNode history = call(HttpMethod.GET, messages, guest.token(), null).getBody();
+        assertEquals(1, history.size());
+        assertTrue(history.get(0).get("systemMessage").asBoolean());
+        assertTrue(history.get(0).get("content").asText().endsWith(" entrou no servidor"));
+        assertEquals(403, status(HttpMethod.POST, messages, guest, Map.of("content", "Sem permissão")));
+        assertEquals(200, status(HttpMethod.POST, messages, owner, Map.of("content", "Anúncio")));
+
+        assertEquals(204, status(HttpMethod.DELETE, channel, bob, null));
+        JsonNode saved = call(HttpMethod.GET, "/api/servers", guest.token(), null).getBody().get(0);
+        assertTrue(saved.path("systemChannelId").isNull());
     }
 
     @Test

@@ -24,7 +24,15 @@ public class Server {
     @Column(nullable = false)
     private String name;
 
+    @Column(length = 2000000)
     private String iconUrl;
+    @Column(length = 2000000)
+    private String bannerUrl;
+
+    @Column(length = 300)
+    private String description;
+    private String accentColor;
+    private UUID systemChannelId;
 
     private String initials;
 

@@ -2,13 +2,14 @@ import { Component, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { ChannelService } from '../../services/channel.service';
 import { PERM, PERM_LABELS, ServerMember, ServerRole } from '../../models/role.model';
 import { PermissionService } from '../../services/permission.service';
 import { RoleService } from '../../services/role.service';
-import { ServerService } from '../../services/server.service';
+import { ServerInvite, ServerService } from '../../services/server.service';
 import { ToastService } from '../../services/toast.service';
 
-type Tab = 'roles' | 'members';
+type Tab = 'overview' | 'roles' | 'members' | 'invites';
 const EVERYONE = '@todos';
 
 @Component({
@@ -36,6 +37,20 @@ export class ServerSettingsModalComponent {
   readonly confirmKickFor = signal<string | null>(null);
   readonly confirmDelete = signal(false);
 
+  readonly canManageServer = computed(() => this.perm.can(PERM.MANAGE_SERVER));
+  readonly invites = signal<ServerInvite[]>([]);
+  readonly inviteBusy = signal(false);
+  readonly invitesLoaded = signal(false);
+  readonly confirmRevoke = signal<string | null>(null);
+  private settingsServerId = '';
+  overview = { name: '', iconUrl: '', bannerUrl: '', description: '', accentColor: '', systemChannelId: '' };
+  readonly overviewFields = [
+    { key: 'name', label: 'Nome', limit: 60 },
+    { key: 'iconUrl', label: 'URL do ícone', limit: 2000000 },
+    { key: 'bannerUrl', label: 'URL do banner', limit: 2000000 },
+    { key: 'accentColor', label: 'Cor de destaque (hex)', limit: 7 },
+  ] as const;
+
   readonly canManageRoles = computed(() => this.perm.can(PERM.MANAGE_ROLES));
   readonly canKick = computed(() => this.perm.can(PERM.KICK_MEMBERS));
 
@@ -50,12 +65,27 @@ export class ServerSettingsModalComponent {
   constructor(
     readonly perm: PermissionService,
     readonly roleService: RoleService,
-    private readonly serverService: ServerService,
+    readonly serverService: ServerService,
+    readonly channelService: ChannelService,
     private readonly toast: ToastService
   ) {}
 
   open(): void {
-    this.tab.set(this.canManageRoles() ? 'roles' : 'members');
+    const server = this.serverService.activeServer();
+    if (!server) return;
+    this.settingsServerId = server.id;
+    this.overview = {
+      name: server.name,
+      iconUrl: server.iconUrl ?? '',
+      bannerUrl: server.bannerUrl ?? '',
+      description: server.description ?? '',
+      accentColor: server.accentColor ?? '',
+      systemChannelId: server.systemChannelId ?? '',
+    };
+    this.invites.set([]);
+    this.invitesLoaded.set(false);
+    this.confirmRevoke.set(null);
+    this.tab.set(this.canManageServer() ? 'overview' : this.canManageRoles() ? 'roles' : 'members');
     this.selectedId.set(EVERYONE);
     this.openMenuFor.set(null);
     this.confirmKickFor.set(null);
@@ -71,8 +101,72 @@ export class ServerSettingsModalComponent {
 
   setTab(t: Tab): void {
     this.tab.set(t);
+    this.confirmRevoke.set(null);
+    if (t === 'invites') void this.loadInvites();
     this.openMenuFor.set(null);
     this.confirmKickFor.set(null);
+  }
+
+  async saveOverview(): Promise<void> {
+    if (!this.canManageServer() || this.saving() || !this.overview.name.trim()) return;
+    this.saving.set(true);
+    try {
+      await this.serverService.updateServer(this.settingsServerId, {
+        ...this.overview,
+        accentColor: this.overview.accentColor.trim() || null,
+        systemChannelId: this.overview.systemChannelId || null,
+      });
+      this.toast.success('Configurações salvas');
+    } catch (error: any) {
+      this.toast.error(error?.error?.message || 'Erro ao salvar servidor');
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async loadInvites(): Promise<void> {
+    if (!this.canManageServer() || this.inviteBusy()) return;
+    const id = this.settingsServerId;
+    this.inviteBusy.set(true);
+    try {
+      const invites = await this.serverService.listInvites(id);
+      if (id === this.settingsServerId) {
+        this.invites.set(invites);
+        this.invitesLoaded.set(true);
+      }
+    } catch (error: any) {
+      this.toast.error(error?.error?.message || 'Erro ao carregar convites');
+    } finally {
+      this.inviteBusy.set(false);
+    }
+  }
+
+  async copyInvite(code: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.serverService.inviteUrl(code));
+      this.toast.success('Link copiado');
+    } catch {
+      this.toast.error('Não foi possível copiar o link');
+    }
+  }
+
+  async revokeInvite(code: string): Promise<void> {
+    if (this.inviteBusy() || !this.canManageServer()) return;
+    if (this.confirmRevoke() !== code) {
+      this.confirmRevoke.set(code);
+      return;
+    }
+    this.inviteBusy.set(true);
+    try {
+      await this.serverService.revokeInvite(code);
+      this.invites.update(items => items.filter(invite => invite.code !== code));
+      this.confirmRevoke.set(null);
+      this.toast.success('Convite revogado');
+    } catch (error: any) {
+      this.toast.error(error?.error?.message || 'Erro ao revogar convite');
+    } finally {
+      this.inviteBusy.set(false);
+    }
   }
 
   // ---------- Cargos ----------

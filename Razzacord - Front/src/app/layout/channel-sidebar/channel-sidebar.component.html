@@ -15,6 +15,13 @@
     </button>
   </div>
 
+  <ng-container *ngIf="serverService.activeServer() as server">
+    <img *ngIf="server.bannerUrl" [src]="server.bannerUrl" alt="" class="h-20 w-full shrink-0 object-cover" />
+    <div *ngIf="server.accentColor" class="h-1 shrink-0" [style.background-color]="server.accentColor"></div>
+    <p *ngIf="server.description" class="line-clamp-3 border-b border-ch-border px-4 py-2 text-xs text-ch-text-muted"
+      [title]="server.description">{{ server.description }}</p>
+  </ng-container>
+
   <!-- Estado vazio -->
   <div *ngIf="!serverService.activeServerId()" class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
     <lucide-icon name="hash" [size]="40" class="text-ch-text-muted opacity-30"></lucide-icon>
@@ -41,9 +48,14 @@
       </div>
 
       <ul *ngIf="!textCollapsed()" class="mt-0.5 flex flex-col gap-0.5">
-        <li *ngFor="let channel of channelService.textChannels()">
+        <ng-container *ngFor="let group of textGroups()">
+        <li *ngIf="group.category" class="px-2 pt-2 text-xs font-semibold text-ch-text-muted">{{ group.category }}</li>
+        <li *ngFor="let channel of group.channels" [draggable]="perm.can(PERM.MANAGE_CHANNELS)" (dragstart)="startDrag($event, channel)"
+          (dragover)="dragOver($event, channel)" (dragend)="endDrag()" (drop)="dropChannel($event, channel)"
+          (contextmenu)="toggleChannelMenu($event, channel)" [class.ring-1]="dropTarget() === channel.id"
+          class="relative rounded-lg ring-ch-brand">
           <button type="button" (click)="selectText(channel.id)"
-            class="group flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-200"
+            class="group flex w-full items-center gap-1.5 rounded-lg px-2 pr-9 py-1.5 text-sm font-medium transition-all duration-200"
             [ngClass]="
               channel.id === channelService.activeChannelId() && channelService.mainAreaMode() === 'text'
                 ? 'bg-ch-brand text-white shadow-brand-glow'
@@ -51,13 +63,15 @@
                   ? 'text-ch-text-primary font-bold hover:bg-ch-bg-light'
                   : 'text-ch-text-muted hover:bg-ch-bg-light hover:text-ch-text-primary'
             ">
-            <lucide-icon name="hash" [size]="18" class="shrink-0 opacity-70"></lucide-icon>
+            <lucide-icon [name]="channel.type === 'announcement' ? 'megaphone' : 'hash'" [size]="18" class="shrink-0 opacity-70"></lucide-icon>
             <span class="truncate flex-1">{{ channel.name }}</span>
             <!-- Badge de não-lido -->
             <span *ngIf="isUnread(channel.id) && channel.id !== channelService.activeChannelId()"
               class="ml-auto h-2 w-2 rounded-full bg-ch-brand shrink-0"></span>
           </button>
+          <ng-container *ngTemplateOutlet="channelMenu; context: { $implicit: channel }"></ng-container>
         </li>
+        </ng-container>
         <li *ngIf="channelService.textChannels().length === 0">
           <p class="px-2 py-1 text-xs text-ch-text-muted italic">Nenhum canal de texto</p>
         </li>
@@ -81,9 +95,14 @@
       </div>
 
       <ul *ngIf="!voiceCollapsed()" class="mt-0.5 flex flex-col gap-0.5">
-        <li *ngFor="let channel of channelService.voiceChannels()">
+        <ng-container *ngFor="let group of voiceGroups()">
+        <li *ngIf="group.category" class="px-2 pt-2 text-xs font-semibold text-ch-text-muted">{{ group.category }}</li>
+        <li *ngFor="let channel of group.channels" [draggable]="perm.can(PERM.MANAGE_CHANNELS)" (dragstart)="startDrag($event, channel)"
+          (dragover)="dragOver($event, channel)" (dragend)="endDrag()" (drop)="dropChannel($event, channel)"
+          (contextmenu)="toggleChannelMenu($event, channel)" [class.ring-1]="dropTarget() === channel.id"
+          class="relative rounded-lg ring-ch-brand">
           <button type="button" (click)="joinVoice(channel.id)"
-            class="group flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium transition-all duration-200"
+            class="group flex w-full items-center gap-1.5 rounded-lg px-2 pr-9 py-1.5 text-sm font-medium transition-all duration-200"
             [ngClass]="
               channel.id === channelService.voiceChannelId() && channelService.mainAreaMode() === 'voice'
                 ? 'bg-ch-brand text-white shadow-brand-glow'
@@ -119,7 +138,9 @@
               </div>
             </li>
           </ul>
+          <ng-container *ngTemplateOutlet="channelMenu; context: { $implicit: channel }"></ng-container>
         </li>
+        </ng-container>
         <li *ngIf="channelService.voiceChannels().length === 0">
           <p class="px-2 py-1 text-xs text-ch-text-muted italic">Nenhum canal de voz</p>
         </li>
@@ -150,6 +171,32 @@
   <!-- Controles do usuário -->
   <app-user-controls />
 </aside>
+
+<ng-template #channelMenu let-channel>
+  <ng-container *ngIf="perm.can(PERM.MANAGE_CHANNELS)">
+    <button type="button" (click)="toggleChannelMenu($event, channel)" [attr.aria-expanded]="menuChannel() === channel.id"
+      [attr.aria-label]="'Gerenciar ' + channel.name" class="absolute right-1 top-1 rounded bg-ch-bg-dark px-2 text-ch-text-primary hover:bg-ch-bg-light">⋯</button>
+    <div *ngIf="menuChannel() === channel.id" class="mx-1 grid gap-1 rounded-md border border-ch-border bg-ch-bg-darker p-2 text-left text-sm text-ch-text-primary">
+      <button type="button" class="rounded p-1 text-left hover:bg-ch-bg-light" (click)="editChannel(channel)">Editar canal</button>
+      <button type="button" class="rounded p-1 text-left hover:bg-ch-bg-light disabled:opacity-40"
+        [disabled]="!nearbyChannel(channel, -1)" (click)="moveChannel(channel, nearbyChannel(channel, -1))">Mover para cima</button>
+      <button type="button" class="rounded p-1 text-left hover:bg-ch-bg-light disabled:opacity-40"
+        [disabled]="!nearbyChannel(channel, 1)" (click)="moveChannel(channel, nearbyChannel(channel, 1))">Mover para baixo</button>
+      <button type="button" class="rounded p-1 text-left text-ch-danger hover:bg-ch-bg-light" (click)="askToDelete(channel)">Apagar canal</button>
+    </div>
+  </ng-container>
+</ng-template>
+
+<div *ngIf="deleting() as channel" class="fixed inset-0 z-50 grid place-items-center bg-black/70">
+  <div role="alertdialog" aria-labelledby="delete-channel-title" class="w-full max-w-sm rounded-xl border border-ch-border bg-ch-bg-dark p-6 text-ch-text-primary">
+    <h2 id="delete-channel-title" class="text-lg font-bold">Apagar {{ channel.name }}?</h2>
+    <p class="my-3 text-sm text-ch-text-muted">As mensagens deste canal serão apagadas.</p>
+    <div class="flex justify-end gap-3">
+      <button type="button" (click)="deleting.set(null)" [disabled]="removing()" class="rounded px-3 py-2">Cancelar</button>
+      <button type="button" (click)="deleteChannel()" [disabled]="removing()" class="rounded bg-ch-danger px-3 py-2 font-semibold text-white disabled:opacity-50">Apagar canal</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal criar canal -->
 <app-create-channel-modal />

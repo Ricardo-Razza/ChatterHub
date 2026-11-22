@@ -42,7 +42,7 @@ export class RoleService {
       if (!id) return;
       this.load();
       this.sub = this.ws.subscribe<any>(`/topic/servers/${id}/events`).subscribe((ev) => {
-        if (ev.type === 'roles' || ev.type === 'member-roles') {
+        if (ev.type === 'roles' || ev.type === 'member-roles' || ev.type === 'member-joined') {
           this.load();
         } else if (ev.type === 'member-removed') {
           if (ev.userId === this.authService.currentUser().id) {

@@ -1,14 +1,16 @@
 import {
   AfterViewChecked,
   Component,
+  effect,
   ElementRef,
-  HostListener,
   signal,
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { PermissionService } from '../../services/permission.service';
+import { PERM } from '../../models/role.model';
 import { ChannelService } from '../../services/channel.service';
 import { ChatService } from '../../services/chat.service';
 import { MessageComponent } from '../message/message.component';
@@ -31,10 +33,21 @@ export class TextChatComponent implements AfterViewChecked {
 
   constructor(
     readonly channelService: ChannelService,
-    readonly chatService: ChatService
-  ) {}
+    readonly chatService: ChatService,
+    private readonly perm: PermissionService
+  ) {
+    effect(() => {
+      this.channelService.activeChannelId();
+      this.editingMessage.set(null);
+    }, { allowSignalWrites: true });
+  }
+
+  get canPost(): boolean {
+    return this.channelService.activeChannel()?.type !== 'announcement' || this.perm.can(PERM.MANAGE_MESSAGES);
+  }
 
   onSend(payload: { content: string; attachment?: { url: string; type: 'image' | 'file'; name: string } }): void {
+    if (!this.canPost) return;
     if (this.editingMessage()) {
       this.chatService.editMessage(this.editingMessage()!.id, payload.content);
       this.editingMessage.set(null);
@@ -45,7 +58,7 @@ export class TextChatComponent implements AfterViewChecked {
   }
 
   onEditRequested(data: { id: string; content: string }): void {
-    this.editingMessage.set(data);
+    if (this.canPost) this.editingMessage.set(data);
   }
 
   cancelEdit(): void {

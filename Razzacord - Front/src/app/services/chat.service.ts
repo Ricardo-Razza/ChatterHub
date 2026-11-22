@@ -50,6 +50,7 @@ export class ChatService {
     this.lastSubscribedChannelId = '';
     this._messages.set([]);
     this._hasMore.set(true);
+    this._loading.set(false);
     this.unsubscribeCurrent();
   }
 
@@ -59,6 +60,7 @@ export class ChatService {
       .get<any[]>(`${environment.apiUrl}/channels/${channelId}/messages?page=${page}&size=${this.PAGE_SIZE}`)
       .subscribe({
         next: (data) => {
+          if (channelId !== this.lastSubscribedChannelId) return;
           this._loading.set(false);
           if (data.length < this.PAGE_SIZE) {
             this._hasMore.set(false);
@@ -72,6 +74,7 @@ export class ChatService {
           }
         },
         error: (err) => {
+          if (channelId !== this.lastSubscribedChannelId) return;
           this._loading.set(false);
           console.error('[ChatService] Falha ao carregar mensagens:', err);
         },
@@ -96,6 +99,7 @@ export class ChatService {
       grouped: false,
       edited: m.edited ?? false,
       deleted: m.deleted ?? false,
+      systemMessage: m.systemMessage ?? false,
       attachmentUrl: m.attachmentUrl,
       attachmentType: m.attachmentType,
       attachmentName: m.attachmentName,
@@ -106,7 +110,7 @@ export class ChatService {
       const prev = mapped[i - 1];
       const curr = mapped[i];
       const timeDiff = curr.createdAt.getTime() - prev.createdAt.getTime();
-      if (prev.authorId === curr.authorId && timeDiff < 5 * 60 * 1000) {
+      if (!prev.systemMessage && !curr.systemMessage && prev.authorId === curr.authorId && timeDiff < 5 * 60 * 1000) {
         curr.grouped = true;
       }
     }
@@ -156,6 +160,7 @@ export class ChatService {
       grouped: false,
       edited: msg.edited ?? false,
       deleted: msg.deleted ?? false,
+      systemMessage: msg.systemMessage ?? false,
       attachmentUrl: msg.attachmentUrl,
       attachmentType: msg.attachmentType,
       attachmentName: msg.attachmentName,
@@ -164,7 +169,7 @@ export class ChatService {
     this._messages.update((list) => {
       if (list.some((m) => m.id === newMsg.id)) return list;
       const last = list[list.length - 1];
-      if (last && last.authorId === newMsg.authorId) {
+      if (last && !last.systemMessage && !newMsg.systemMessage && last.authorId === newMsg.authorId) {
         const timeDiff = newMsg.createdAt.getTime() - last.createdAt.getTime();
         if (timeDiff < 5 * 60 * 1000) newMsg.grouped = true;
       }

@@ -6,7 +6,6 @@ import com.api.Razzacord.dto.ServerResponse;
 import com.api.Razzacord.dto.MemberResponse;
 import com.api.Razzacord.controller.VoiceWsController;
 import com.api.Razzacord.exception.ApiException;
-import com.api.Razzacord.model.ChannelType;
 import com.api.Razzacord.model.Permission;
 import com.api.Razzacord.model.Server;
 import com.api.Razzacord.model.ServerMember;
@@ -23,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -123,9 +123,51 @@ public class ServerService {
     }
 
     @Transactional
+    public ServerResponse updateServer(UUID id, ServerRequest request) {
+        Server server = serverRepository.lockById(id)
+                .orElseThrow(() -> ApiException.notFound("Servidor não encontrado"));
+        permissionService.require(id, userService.getCurrentUserModel().getId(), Permission.MANAGE_SERVER);
+        String name = request.getName() == null ? "" : request.getName().trim();
+        if (name.isEmpty() || name.length() > 60) {
+            throw ApiException.badRequest("O nome do servidor deve ter entre 1 e 60 caracteres");
+        }
+        if (request.getDescription() != null && request.getDescription().length() > 300) {
+            throw ApiException.badRequest("A descrição deve ter até 300 caracteres");
+        }
+        String color = request.getAccentColor();
+        if (color != null && !color.matches("#[0-9A-Fa-f]{6}")) {
+            throw ApiException.badRequest("Cor de destaque inválida");
+        }
+        if (request.getSystemChannelId() != null) {
+            channelService.requireSystemChannel(id, request.getSystemChannelId());
+        }
+        server.setName(name);
+        String[] words = name.split("\\s+");
+        String initials = words[0].substring(0, 1);
+        if (words.length > 1) initials += words[1].substring(0, 1);
+        server.setInitials(initials.toUpperCase(Locale.ROOT));
+        server.setIconUrl(validImage(request.getIconUrl()));
+        server.setBannerUrl(validImage(request.getBannerUrl()));
+        server.setDescription(request.getDescription());
+        server.setAccentColor(color);
+        server.setSystemChannelId(request.getSystemChannelId());
+        eventPublisher.publish(id, Map.of("type", "server-updated"));
+        return mapToServerResponse(server);
+    }
+
+    private String validImage(String input) {
+        if (input == null || input.isBlank()) return null;
+        String value = input.trim();
+        if (value.length() > 2000000 || !value.matches("(?is)(https?://\\S+|data:image/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)")) {
+            throw ApiException.badRequest("Use uma URL de imagem HTTP(S) ou uma imagem em data URL");
+        }
+        return value;
+    }
+
+    @Transactional
     public void deleteServer(UUID id) {
         User currentUser = userService.getCurrentUserModel();
-        Server server = serverRepository.findById(id)
+        Server server = serverRepository.lockById(id)
                 .orElseThrow(() -> com.api.Razzacord.exception.ApiException.notFound("Servidor não encontrado"));
 
         if (!server.getOwnerId().equals(currentUser.getId())) {
@@ -218,6 +260,10 @@ public class ServerService {
                 .id(server.getId())
                 .name(server.getName())
                 .iconUrl(server.getIconUrl())
+                .bannerUrl(server.getBannerUrl())
+                .description(server.getDescription())
+                .accentColor(server.getAccentColor())
+                .systemChannelId(server.getSystemChannelId())
                 .initials(server.getInitials())
                 .hasNotification(false)
                 .build();

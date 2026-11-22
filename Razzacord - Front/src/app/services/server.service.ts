@@ -1,4 +1,5 @@
 import { Injectable, computed, signal, effect } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { Server } from '../models/server.model';
 import { AuthService } from './auth.service';
@@ -7,8 +8,16 @@ import { environment } from '../../environments/environment';
 export interface InvitePreview {
   serverName: string;
   iconUrl?: string;
+  bannerUrl?: string;
+  description?: string;
   initials: string;
   memberCount: number;
+}
+
+export interface ServerInvite {
+  code: string;
+  expiresAt: string;
+  uses: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,15 +47,8 @@ export class ServerService {
   }
 
   loadServers(): void {
-    this.http.get<any[]>(`${environment.apiUrl}/servers`).subscribe({
-      next: (data) => {
-        const mapped: Server[] = data.map((s) => ({
-          id: s.id,
-          name: s.name,
-          iconUrl: s.iconUrl,
-          initials: s.initials,
-          hasNotification: s.hasNotification ?? false,
-        }));
+    this.http.get<Server[]>(`${environment.apiUrl}/servers`).subscribe({
+      next: (mapped) => {
 
         this._servers.set(mapped);
         if (mapped.length > 0) {
@@ -59,6 +61,19 @@ export class ServerService {
       },
       error: (err) => console.error('[ServerService] Falha ao carregar servidores:', err),
     });
+  }
+
+  async updateServer(id: string, details: Omit<Server, 'id'>): Promise<void> {
+    const server = await firstValueFrom(this.http.put<Server>(`${environment.apiUrl}/servers/${id}`, details));
+    this._servers.update((list) => list.map((item) => item.id === id ? server : item));
+  }
+
+  listInvites(id: string): Promise<ServerInvite[]> {
+    return firstValueFrom(this.http.get<ServerInvite[]>(`${environment.apiUrl}/servers/${id}/invites`));
+  }
+
+  revokeInvite(code: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${environment.apiUrl}/invites/${encodeURIComponent(code)}`));
   }
 
   setActiveServer(serverId: string): void {

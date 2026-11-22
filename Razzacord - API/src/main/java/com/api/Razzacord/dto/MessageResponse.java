@@ -19,6 +19,8 @@ public class MessageResponse {
     private String authorName;
     private String authorAvatarUrl;
     private String content;
+    private boolean systemMessage;
+    private boolean deleted;
     private LocalDateTime createdAt;
     private boolean edited;
     private LocalDateTime editedAt;

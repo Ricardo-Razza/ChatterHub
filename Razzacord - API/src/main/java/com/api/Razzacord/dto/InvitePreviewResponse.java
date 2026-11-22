@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 public class InvitePreviewResponse {
     private String serverName;
     private String iconUrl;
+    private String bannerUrl;
+    private String description;
     private String initials;
     private int memberCount;
 }

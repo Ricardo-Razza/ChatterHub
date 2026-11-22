@@ -31,6 +31,15 @@ public class Channel {
     @Column(nullable = false)
     private ChannelType type;
 
+    @Column(length = 200)
+    private String topic;
+
+    @Column(length = 60)
+    private String category;
+
+    @Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0 NOT NULL")
+    private int position;
+
     private LocalDateTime createdAt;
 
     @PrePersist

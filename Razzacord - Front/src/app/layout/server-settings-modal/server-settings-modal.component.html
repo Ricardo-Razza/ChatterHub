@@ -9,6 +9,11 @@
         <h2 class="truncate text-lg font-bold text-ch-text-primary">Configurações do servidor</h2>
         <p class="truncate text-xs text-ch-text-muted">{{ serverName }}</p>
         <div class="mt-3 flex gap-4">
+          <button *ngIf="canManageServer()" type="button" (click)="setTab('overview')"
+            class="border-b-2 pb-2 text-sm font-semibold"
+            [ngClass]="tab() === 'overview' ? 'border-ch-brand text-ch-text-primary' : 'border-transparent text-ch-text-muted'">
+            Visão geral
+          </button>
           <button *ngIf="canManageRoles()" type="button" (click)="setTab('roles')"
             class="border-b-2 pb-2 text-sm font-semibold transition-colors"
             [ngClass]="tab() === 'roles' ? 'border-ch-brand text-ch-text-primary' : 'border-transparent text-ch-text-muted hover:text-ch-text-primary'">
@@ -19,12 +24,62 @@
             [ngClass]="tab() === 'members' ? 'border-ch-brand text-ch-text-primary' : 'border-transparent text-ch-text-muted hover:text-ch-text-primary'">
             Membros
           </button>
+          <button *ngIf="canManageServer()" type="button" (click)="setTab('invites')"
+            class="border-b-2 pb-2 text-sm font-semibold"
+            [ngClass]="tab() === 'invites' ? 'border-ch-brand text-ch-text-primary' : 'border-transparent text-ch-text-muted'">
+            Convites
+          </button>
         </div>
       </div>
       <button type="button" (click)="close()" aria-label="Fechar"
         class="flex h-8 w-8 items-center justify-center rounded text-ch-text-muted hover:text-ch-text-primary transition-colors">
         <lucide-icon name="x" [size]="18"></lucide-icon>
       </button>
+    </div>
+
+    <form *ngIf="tab() === 'overview' && canManageServer()" (ngSubmit)="saveOverview()"
+      class="grid flex-1 content-start gap-3 overflow-y-auto p-6 text-sm text-ch-text-primary">
+      <label *ngFor="let field of overviewFields" class="grid gap-1">
+        {{ field.label }}
+        <input [(ngModel)]="overview[field.key]" [name]="field.key" [attr.maxlength]="field.limit" [required]="field.key === 'name'"
+          class="rounded-md border border-ch-border bg-ch-bg-darker p-2" />
+      </label>
+      <label class="grid gap-1">Descrição
+        <textarea [(ngModel)]="overview.description" name="description" rows="2" maxlength="300"
+          class="rounded-md border border-ch-border bg-ch-bg-darker p-2"></textarea>
+      </label>
+      <div class="grid gap-1">
+        <label for="system-channel">Canal de mensagens de entrada</label>
+        <select id="system-channel" [(ngModel)]="overview.systemChannelId" name="systemChannelId" class="rounded-md border border-ch-border bg-ch-bg-darker p-2">
+          <option value="">Nenhum</option>
+          <option *ngFor="let channel of channelService.textChannels()" [value]="channel.id">
+            {{ channel.category ? channel.category + ' / ' : '' }}{{ channel.name }}
+          </option>
+        </select>
+      </div>
+      <button type="submit" [disabled]="saving() || !overview.name.trim()"
+        class="justify-self-end rounded-md bg-ch-brand px-4 py-2 font-semibold text-white disabled:opacity-40">Salvar</button>
+    </form>
+
+    <div *ngIf="tab() === 'invites' && canManageServer()" class="flex-1 overflow-y-auto p-6 text-sm text-ch-text-primary">
+      <p *ngIf="inviteBusy() && !invitesLoaded()" class="text-ch-text-muted">Carregando convites…</p>
+      <p *ngIf="invitesLoaded() && invites().length === 0" class="text-ch-text-muted">Nenhum convite ativo.</p>
+      <button *ngIf="!inviteBusy() && !invitesLoaded()" type="button" (click)="loadInvites()" class="text-ch-brand-light">Tentar novamente</button>
+      <ul class="divide-y divide-ch-border">
+        <li *ngFor="let invite of invites()" class="flex items-center justify-between gap-3 py-3">
+          <div>
+            <p class="font-mono">{{ invite.code }}</p>
+            <p class="text-xs text-ch-text-muted">{{ invite.uses }} {{ invite.uses === 1 ? 'uso' : 'usos' }} · Expira em {{ invite.expiresAt | date:'dd/MM/yyyy HH:mm' }}</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" (click)="copyInvite(invite.code)" class="rounded px-2 py-1 hover:bg-ch-bg-light">Copiar link</button>
+            <button type="button" (click)="revokeInvite(invite.code)" [disabled]="inviteBusy()"
+              class="rounded px-2 py-1 text-ch-danger hover:bg-ch-bg-light disabled:opacity-40">
+              {{ confirmRevoke() === invite.code ? 'Confirmar revogação' : 'Revogar' }}
+            </button>
+          </div>
+        </li>
+      </ul>
     </div>
 
     <!-- ===== Aba Cargos ===== -->

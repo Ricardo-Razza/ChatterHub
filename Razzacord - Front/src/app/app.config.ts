@@ -4,7 +4,7 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import {
   LucideAngularModule, MessageSquare, Mic, MicOff, Headphones,
-  Settings, Plus, Hash, Volume2, VolumeX, ChevronDown, Send, Paperclip, Smile,
+  Settings, Plus, Hash, Megaphone, Volume2, VolumeX, ChevronDown, Send, Paperclip, Smile,
   Gift, PlusCircle, ScreenShare, PhoneOff, Video, VideoOff, Users,
   Search, Bell, Pin, Inbox, HelpCircle, AtSign, Compass, X, Shield, Sliders, Monitor,
   AlertCircle, AlertTriangle, CheckCircle, Info, Check, Pencil, Trash2, MessageCircle,
@@ -25,7 +25,7 @@ export const appConfig: ApplicationConfig = {
     },
     importProvidersFrom(
       LucideAngularModule.pick({
-        MessageSquare, Mic, MicOff, Headphones, Settings, Plus, Hash, Volume2,
+        MessageSquare, Mic, MicOff, Headphones, Settings, Plus, Hash, Megaphone, Volume2,
         VolumeX, ChevronDown, Send, Paperclip, Smile, Gift, PlusCircle, ScreenShare,
         PhoneOff, Video, VideoOff, Users, Search, Bell, Pin, Inbox, HelpCircle,
         AtSign, Compass, X, Shield, Sliders, Monitor,

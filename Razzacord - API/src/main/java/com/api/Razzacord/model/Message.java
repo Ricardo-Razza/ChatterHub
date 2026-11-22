@@ -30,6 +30,9 @@ public class Message {
     @Column(nullable = false, length = 4000)
     private String content;
 
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE NOT NULL")
+    private boolean systemMessage;
+
     @Builder.Default
     private boolean edited = false;
 

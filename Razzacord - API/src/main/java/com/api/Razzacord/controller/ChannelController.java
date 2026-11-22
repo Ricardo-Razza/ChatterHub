@@ -44,12 +44,25 @@ public class ChannelController {
         return ResponseEntity.ok(channelService.createChannel(request));
     }
 
+    @PutMapping("/channels/{id}")
+    public ResponseEntity<ChannelResponse> updateChannel(@PathVariable UUID id, @RequestBody ChannelRequest request) {
+        UUID serverId = channelService.getServerId(id);
+        permissionService.require(serverId, userService.getCurrentUserModel().getId(), Permission.MANAGE_CHANNELS);
+        return ResponseEntity.ok(channelService.updateChannel(serverId, id, request));
+    }
+
+    @PutMapping("/servers/{serverId}/channels/order")
+    public ResponseEntity<List<ChannelResponse>> reorderChannels(@PathVariable UUID serverId, @RequestBody List<UUID> ids) {
+        permissionService.require(serverId, userService.getCurrentUserModel().getId(), Permission.MANAGE_CHANNELS);
+        return ResponseEntity.ok(channelService.reorderChannels(serverId, ids));
+    }
+
     @DeleteMapping("/channels/{id}")
     public ResponseEntity<Void> deleteChannel(@PathVariable UUID id) {
         User user = userService.getCurrentUserModel();
         UUID serverId = channelService.getServerId(id);
         permissionService.require(serverId, user.getId(), Permission.MANAGE_CHANNELS);
-        channelService.deleteChannel(id);
+        channelService.deleteChannel(serverId, id);
         return ResponseEntity.noContent().build();
     }
 }

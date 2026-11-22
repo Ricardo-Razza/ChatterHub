@@ -5,6 +5,7 @@ export interface Message {
   authorName: string;
   authorAvatarUrl: string;
   content: string;
+  systemMessage?: boolean;
   createdAt: Date;
   /** Indica se é a mesma pessoa da mensagem anterior, para agrupar visualmente */
   grouped?: boolean;

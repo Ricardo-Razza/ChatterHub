@@ -18,7 +18,10 @@ public class ServerEventPublisher {
 
     /** Envia só depois do commit, para quem refaz o fetch ao receber o evento não ler dado antigo. */
     public void publish(UUID serverId, Map<String, String> payload) {
-        String destination = "/topic/servers/" + serverId + "/events";
+        publishAfterCommit("/topic/servers/" + serverId + "/events", payload);
+    }
+
+    public void publishAfterCommit(String destination, Object payload) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override

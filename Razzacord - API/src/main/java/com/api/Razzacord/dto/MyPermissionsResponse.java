@@ -13,4 +13,5 @@ public class MyPermissionsResponse {
     private long permissions;
     private boolean owner;
     private int topPosition;
+    private long defaultPermissions;
 }

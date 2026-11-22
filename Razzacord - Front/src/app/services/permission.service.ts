@@ -11,10 +11,12 @@ export class PermissionService {
   private readonly _permissions = signal(0);
   private readonly _isOwner = signal(false);
   private readonly _topPosition = signal(0);
+  private readonly _defaultPermissions = signal(0);
 
   readonly permissions = this._permissions.asReadonly();
   readonly isOwner = this._isOwner.asReadonly();
   readonly topPosition = this._topPosition.asReadonly();
+  readonly defaultPermissions = this._defaultPermissions.asReadonly();
 
   private sub?: Subscription;
   private serverId = '';
@@ -33,6 +35,7 @@ export class PermissionService {
       this._permissions.set(0);
       this._isOwner.set(false);
       this._topPosition.set(0);
+      this._defaultPermissions.set(0);
       if (!id) return;
       this.reload();
       this.sub = this.ws.subscribe<any>(`/topic/servers/${id}/events`).subscribe((ev) => {
@@ -50,13 +53,14 @@ export class PermissionService {
     const id = this.serverId;
     if (!id) return;
     this.http
-      .get<{ permissions: number; owner: boolean; topPosition: number }>(`${environment.apiUrl}/servers/${id}/me/permissions`)
+      .get<{ permissions: number; owner: boolean; topPosition: number; defaultPermissions: number }>(`${environment.apiUrl}/servers/${id}/me/permissions`)
       .subscribe({
         next: (r) => {
           if (id !== this.serverId) return;
           this._permissions.set(r.permissions);
           this._isOwner.set(r.owner);
           this._topPosition.set(r.topPosition);
+          this._defaultPermissions.set(r.defaultPermissions ?? 0);
         },
         error: (err) => console.error('[PermissionService] Falha ao carregar permissões:', err),
       });

@@ -225,10 +225,13 @@ public class RoleService {
     public MyPermissionsResponse myPermissions(UUID serverId) {
         User me = userService.getCurrentUserModel();
         requireMember(serverId, me);
+        long defaults = serverRepository.findById(serverId)
+                .orElseThrow(() -> ApiException.notFound("Servidor não encontrado")).getDefaultPermissions();
         return MyPermissionsResponse.builder()
                 .permissions(permissionService.effective(serverId, me.getId()))
                 .owner(permissionService.isOwner(serverId, me.getId()))
                 .topPosition(permissionService.topPosition(serverId, me.getId()))
+                .defaultPermissions(defaults)
                 .build();
     }
 

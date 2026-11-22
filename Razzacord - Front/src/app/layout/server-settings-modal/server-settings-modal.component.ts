@@ -10,7 +10,6 @@ import { ToastService } from '../../services/toast.service';
 
 type Tab = 'roles' | 'members';
 const EVERYONE = '@todos';
-const DEFAULT_PERMISSIONS = PERM.CREATE_INVITE | PERM.STREAM;
 
 @Component({
   selector: 'app-server-settings-modal',
@@ -32,8 +31,6 @@ export class ServerSettingsModalComponent {
   readonly draftColor = signal('#99AAB5');
   readonly draftPerms = signal(0);
 
-  // A API não expõe o valor atual de @todos; começa no padrão do servidor.
-  readonly defaultPerms = signal(DEFAULT_PERMISSIONS);
 
   readonly openMenuFor = signal<string | null>(null);
   readonly confirmKickFor = signal<string | null>(null);
@@ -65,6 +62,7 @@ export class ServerSettingsModalComponent {
     this.confirmDelete.set(false);
     this.visible.set(true);
     this.roleService.load();
+    this.select(EVERYONE);
   }
 
   close(): void {
@@ -98,7 +96,7 @@ export class ServerSettingsModalComponent {
     this.selectedId.set(id);
     this.confirmDelete.set(false);
     if (id === EVERYONE) {
-      this.draftPerms.set(this.defaultPerms());
+      this.draftPerms.set(this.perm.defaultPermissions());
       return;
     }
     const role = this.roleService.roles().find((r) => r.id === id);
@@ -140,7 +138,7 @@ export class ServerSettingsModalComponent {
     try {
       if (this.selectedId() === EVERYONE) {
         await this.roleService.setDefaultPermissions(this.draftPerms());
-        this.defaultPerms.set(this.draftPerms());
+        this.perm.reload();
         this.toast.success('Permissões de @todos salvas');
       } else {
         await this.roleService.update(this.selectedId(), {

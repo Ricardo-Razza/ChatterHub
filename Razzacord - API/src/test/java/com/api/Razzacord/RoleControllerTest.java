@@ -295,6 +295,7 @@ class RoleControllerTest {
 
         JsonNode me = call(HttpMethod.GET, "/api/servers/" + s.serverId + "/me/permissions", s.bob.token(), null).getBody();
         assertEquals(3, me.get("permissions").asLong());
+        assertEquals(3, me.get("defaultPermissions").asLong());
     }
 
     @Test
@@ -305,6 +306,7 @@ class RoleControllerTest {
         JsonNode owner = call(HttpMethod.GET, path, s.owner.token(), null).getBody();
         assertTrue(owner.get("owner").asBoolean());
         assertEquals(255, owner.get("permissions").asLong());
+        assertEquals(65, owner.get("defaultPermissions").asLong());
 
         JsonNode mgr = call(HttpMethod.GET, path, s.mgr.token(), null).getBody();
         assertFalse(mgr.get("owner").asBoolean());

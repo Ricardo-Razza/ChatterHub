@@ -117,6 +117,15 @@ public class VoiceWsController {
         }
     }
 
+    /** Tira o usuário da sala de voz de um canal deste servidor (ex.: ao ser expulso), atualizando os rosters. */
+    public void kickFromVoice(UUID serverId, UUID userId) {
+        boolean inServerRoom = channelRepository.findByServerId(serverId).stream()
+                .anyMatch(c -> registry.isInRoom(c.getId(), userId));
+        if (inServerRoom) {
+            registry.leave(userId).forEach(this::broadcastRoster);
+        }
+    }
+
     private void broadcastRoster(UUID channelId) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("type", "roster");

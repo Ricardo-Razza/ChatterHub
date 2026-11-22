@@ -5,6 +5,7 @@ import com.api.Razzacord.dto.InvitePreviewResponse;
 import com.api.Razzacord.dto.InviteResponse;
 import com.api.Razzacord.dto.ServerResponse;
 import com.api.Razzacord.exception.ApiException;
+import com.api.Razzacord.model.Permission;
 import com.api.Razzacord.model.Server;
 import com.api.Razzacord.model.ServerInvite;
 import com.api.Razzacord.model.ServerMember;
@@ -12,6 +13,7 @@ import com.api.Razzacord.model.User;
 import com.api.Razzacord.repository.ServerInviteRepository;
 import com.api.Razzacord.repository.ServerMemberRepository;
 import com.api.Razzacord.repository.ServerRepository;
+import com.api.Razzacord.security.PermissionService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -37,13 +39,12 @@ public class InviteService {
     @Autowired private ServerMemberRepository serverMemberRepository;
     @Autowired private UserService userService;
     @Autowired private ServerService serverService;
+    @Autowired private PermissionService permissionService;
 
     @Transactional
     public InviteResponse createInvite(UUID serverId) {
         User user = userService.getCurrentUserModel();
-        if (serverMemberRepository.findByServerIdAndUserId(serverId, user.getId()).isEmpty()) {
-            throw ApiException.forbidden("Você não é membro deste servidor");
-        }
+        permissionService.require(serverId, user.getId(), Permission.CREATE_INVITE);
         ServerInvite invite = ServerInvite.builder()
                 .code(generateCode())
                 .serverId(serverId)
@@ -89,7 +90,7 @@ public class InviteService {
     }
 
     public List<InviteListItem> listInvites(UUID serverId) {
-        requireOwner(serverId);
+        requireManageServer(serverId);
         return inviteRepository.findByServerIdAndRevokedFalseAndExpiresAtAfter(serverId, LocalDateTime.now()).stream()
                 .map(i -> InviteListItem.builder()
                         .code(i.getCode())
@@ -105,18 +106,13 @@ public class InviteService {
         if (invite == null) {
             throw ApiException.notFound(INVALID);
         }
-        requireOwner(invite.getServerId());
+        requireManageServer(invite.getServerId());
         invite.setRevoked(true);
         inviteRepository.save(invite);
     }
 
-    private void requireOwner(UUID serverId) {
-        User user = userService.getCurrentUserModel();
-        Server server = serverRepository.findById(serverId)
-                .orElseThrow(() -> ApiException.notFound("Servidor não encontrado"));
-        if (!user.getId().equals(server.getOwnerId())) {
-            throw ApiException.forbidden("Apenas o dono pode gerenciar convites");
-        }
+    private void requireManageServer(UUID serverId) {
+        permissionService.require(serverId, userService.getCurrentUserModel().getId(), Permission.MANAGE_SERVER);
     }
 
     private ServerInvite requireUsable(String code) {

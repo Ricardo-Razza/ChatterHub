@@ -4,7 +4,10 @@ import com.api.Razzacord.dto.ChannelRequest;
 import com.api.Razzacord.dto.ServerRequest;
 import com.api.Razzacord.dto.ServerResponse;
 import com.api.Razzacord.dto.MemberResponse;
+import com.api.Razzacord.controller.VoiceWsController;
+import com.api.Razzacord.exception.ApiException;
 import com.api.Razzacord.model.ChannelType;
+import com.api.Razzacord.model.Permission;
 import com.api.Razzacord.model.Server;
 import com.api.Razzacord.model.ServerMember;
 import com.api.Razzacord.model.ServerMemberRole;
@@ -14,6 +17,7 @@ import com.api.Razzacord.repository.ServerMemberRoleRepository;
 import com.api.Razzacord.repository.ServerRepository;
 import com.api.Razzacord.repository.ServerRoleRepository;
 import com.api.Razzacord.repository.UserRepository;
+import com.api.Razzacord.security.PermissionService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,15 @@ public class ServerService {
 
     @Autowired
     private ServerMemberRoleRepository serverMemberRoleRepository;
+
+    @Autowired
+    private PermissionService permissionService;
+
+    @Autowired
+    private ServerEventPublisher eventPublisher;
+
+    @Autowired
+    private VoiceWsController voiceWsController;
 
     public List<ServerResponse> getServersForCurrentUser() {
         User currentUser = userService.getCurrentUserModel();
@@ -127,6 +140,7 @@ public class ServerService {
         serverRepository.deleteById(id);
     }
 
+    @Transactional
     public void leaveServer(UUID serverId) {
         User currentUser = userService.getCurrentUserModel();
         ServerMember member = serverMemberRepository.findByServerIdAndUserId(serverId, currentUser.getId())
@@ -137,7 +151,31 @@ public class ServerService {
             throw com.api.Razzacord.exception.ApiException.badRequest("O dono não pode sair; apague o servidor");
         }
 
+        serverMemberRoleRepository.deleteByServerIdAndUserId(serverId, currentUser.getId());
         serverMemberRepository.delete(member);
+    }
+
+    @Transactional
+    public void kick(UUID serverId, UUID targetId) {
+        User actor = userService.getCurrentUserModel();
+        permissionService.require(serverId, actor.getId(), Permission.KICK_MEMBERS);
+
+        ServerMember target = serverMemberRepository.findByServerIdAndUserId(serverId, targetId)
+                .orElseThrow(() -> ApiException.notFound("Membro não encontrado"));
+        if (permissionService.isOwner(serverId, targetId)) {
+            throw ApiException.forbidden("O dono do servidor não pode ser expulso");
+        }
+        if (targetId.equals(actor.getId())) {
+            throw ApiException.forbidden("Você não pode expulsar a si mesmo");
+        }
+        if (permissionService.topPosition(serverId, targetId) >= permissionService.topPosition(serverId, actor.getId())) {
+            throw ApiException.forbidden("Você não pode expulsar um membro com cargo igual ou acima do seu");
+        }
+
+        serverMemberRoleRepository.deleteByServerIdAndUserId(serverId, targetId);
+        serverMemberRepository.delete(target);
+        eventPublisher.publish(serverId, Map.of("type", "member-removed", "userId", targetId.toString()));
+        voiceWsController.kickFromVoice(serverId, targetId);
     }
 
     public List<MemberResponse> getServerMembers(UUID serverId) {

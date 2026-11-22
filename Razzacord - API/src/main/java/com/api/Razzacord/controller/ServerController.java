@@ -55,6 +55,12 @@ public class ServerController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{id}/members/{userId}")
+    public ResponseEntity<Void> kickMember(@PathVariable UUID id, @PathVariable UUID userId) {
+        serverService.kick(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}/members")
     public ResponseEntity<List<MemberResponse>> getMembers(@PathVariable UUID id) {
         return ResponseEntity.ok(serverService.getServerMembers(id));

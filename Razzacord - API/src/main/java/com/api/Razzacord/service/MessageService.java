@@ -9,6 +9,8 @@ import com.api.Razzacord.model.User;
 import com.api.Razzacord.repository.MessageRepository;
 import com.api.Razzacord.repository.UserRepository;
 import com.api.Razzacord.security.AccessService;
+import com.api.Razzacord.model.Permission;
+import com.api.Razzacord.security.PermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +35,9 @@ public class MessageService {
 
     @Autowired
     private AccessService accessService;
+
+    @Autowired
+    private PermissionService permissionService;
 
     public List<MessageResponse> getMessages(UUID channelId, int page, int size, User viewer) {
         accessService.requireChannelMember(channelId, viewer);
@@ -88,7 +93,7 @@ public class MessageService {
 
         Channel channel = accessService.requireChannelMember(message.getChannelId(), requester);
         boolean author = message.getAuthorId().equals(requester.getId());
-        if (!author && !accessService.canModerate(channel.getServerId(), requester)) {
+        if (!author && !permissionService.has(channel.getServerId(), requester.getId(), Permission.MANAGE_MESSAGES)) {
             throw ApiException.forbidden("Sem permissão para apagar esta mensagem");
         }
 

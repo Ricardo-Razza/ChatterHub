@@ -3,12 +3,9 @@ package com.api.Razzacord.security;
 import com.api.Razzacord.exception.ApiException;
 import com.api.Razzacord.model.Channel;
 import com.api.Razzacord.model.ChannelType;
-import com.api.Razzacord.model.Role;
-import com.api.Razzacord.model.Server;
 import com.api.Razzacord.model.User;
 import com.api.Razzacord.repository.ChannelRepository;
 import com.api.Razzacord.repository.ServerMemberRepository;
-import com.api.Razzacord.repository.ServerRepository;
 import com.api.Razzacord.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +18,6 @@ import java.util.UUID;
 public class AccessService {
 
     private final ChannelRepository channelRepository;
-    private final ServerRepository serverRepository;
     private final ServerMemberRepository serverMemberRepository;
     private final UserRepository userRepository;
 
@@ -37,10 +33,6 @@ public class AccessService {
 
     public boolean isMember(UUID serverId, UUID userId) {
         return serverMemberRepository.findByServerIdAndUserId(serverId, userId).isPresent();
-    }
-
-    public boolean isPrivileged(User user) {
-        return user.getRole() == Role.ADMIN || user.getRole() == Role.MODERATOR;
     }
 
     public Channel requireChannelMember(UUID channelId, User user) {
@@ -64,23 +56,5 @@ public class AccessService {
         if (!isMember(serverId, user.getId())) {
             throw ApiException.forbidden("Você não é membro deste servidor");
         }
-    }
-
-    public Server requireServerOwnerOrAdmin(UUID serverId, User user) {
-        Server server = serverRepository.findById(serverId)
-                .orElseThrow(() -> ApiException.notFound("Servidor não encontrado"));
-        boolean owner = server.getOwnerId().equals(user.getId());
-        if (!owner && user.getRole() != Role.ADMIN) {
-            throw ApiException.forbidden("Apenas o dono do servidor pode fazer isso");
-        }
-        return server;
-    }
-
-    /** Dono do servidor ou moderador global podem moderar mensagens de outros. */
-    public boolean canModerate(UUID serverId, User user) {
-        if (isPrivileged(user)) return true;
-        return serverRepository.findById(serverId)
-                .map(s -> s.getOwnerId().equals(user.getId()))
-                .orElse(false);
     }
 }

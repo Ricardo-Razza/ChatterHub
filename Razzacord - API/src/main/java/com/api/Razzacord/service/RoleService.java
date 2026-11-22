@@ -16,11 +16,8 @@ import com.api.Razzacord.repository.ServerRepository;
 import com.api.Razzacord.repository.ServerRoleRepository;
 import com.api.Razzacord.security.PermissionService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,7 +43,7 @@ public class RoleService {
     private final PermissionService permissionService;
     private final UserService userService;
     private final ServerService serverService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ServerEventPublisher eventPublisher;
 
     public List<ServerRoleResponse> list(UUID serverId) {
         User me = userService.getCurrentUserModel();
@@ -207,7 +204,7 @@ public class RoleService {
                     .serverId(serverId).userId(userId).roleId(roleId).build());
         }
 
-        publish(serverId, Map.of("type", "member-roles", "userId", userId.toString()));
+        eventPublisher.publish(serverId, Map.of("type", "member-roles", "userId", userId.toString()));
         return serverService.getMemberResponse(serverId, userId);
     }
 
@@ -285,22 +282,7 @@ public class RoleService {
     }
 
     private void publishRoles(UUID serverId) {
-        publish(serverId, Map.of("type", "roles"));
-    }
-
-    /** Envia só depois do commit, para quem refaz o fetch ao receber o evento não ler dado antigo. */
-    private void publish(UUID serverId, Map<String, String> payload) {
-        String destination = "/topic/servers/" + serverId + "/events";
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    messagingTemplate.convertAndSend(destination, payload);
-                }
-            });
-        } else {
-            messagingTemplate.convertAndSend(destination, payload);
-        }
+        eventPublisher.publish(serverId, Map.of("type", "roles"));
     }
 
     private ServerRoleResponse toResponse(ServerRole r) {

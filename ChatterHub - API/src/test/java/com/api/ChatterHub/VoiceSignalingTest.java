@@ -45,6 +45,7 @@ class VoiceSignalingTest {
 
     @Autowired UserService userService;
     @Autowired ServerService serverService;
+    @Autowired com.api.ChatterHub.service.InviteService inviteService;
     @Autowired ChannelService channelService;
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -101,8 +102,9 @@ class VoiceSignalingTest {
         ServerResponse server = serverService.createServer(serverReq("srv " + suffix));
         ChannelResponse voice = channelService.getChannelsByServer(server.getId()).stream()
                 .filter(c -> "voice".equals(c.getType())).findFirst().orElseThrow();
+        String inviteCode = inviteService.createInvite(server.getId()).getCode();
         authenticateAs(bob.getUser().getUsername());
-        serverService.joinServer(server.getId());
+        inviteService.accept(inviteCode);
         SecurityContextHolder.clearContext();
 
         String topic = "/topic/voice/" + voice.getId();

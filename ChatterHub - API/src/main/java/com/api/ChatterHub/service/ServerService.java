@@ -32,6 +32,9 @@ public class ServerService {
     private UserService userService;
 
     @Autowired
+    private com.api.ChatterHub.repository.ServerInviteRepository serverInviteRepository;
+
+    @Autowired
     private ChannelService channelService;
 
     @Autowired
@@ -106,25 +109,10 @@ public class ServerService {
             throw com.api.ChatterHub.exception.ApiException.forbidden("Apenas o dono pode apagar o servidor");
         }
 
+        serverInviteRepository.deleteByServerId(id);
         serverMemberRepository.deleteByServerId(id);
         channelService.deleteChannelsByServerId(id);
         serverRepository.deleteById(id);
-    }
-
-    public void joinServer(UUID serverId) {
-        User currentUser = userService.getCurrentUserModel();
-        Server server = serverRepository.findById(serverId)
-                .orElseThrow(() -> com.api.ChatterHub.exception.ApiException.notFound("Servidor não encontrado"));
-
-        if (serverMemberRepository.findByServerIdAndUserId(serverId, currentUser.getId()).isPresent()) {
-            throw com.api.ChatterHub.exception.ApiException.badRequest("Você já está neste servidor");
-        }
-
-        ServerMember member = ServerMember.builder()
-                .serverId(server.getId())
-                .userId(currentUser.getId())
-                .build();
-        serverMemberRepository.save(member);
     }
 
     public void leaveServer(UUID serverId) {
@@ -152,7 +140,7 @@ public class ServerService {
                 .collect(Collectors.toList());
     }
 
-    private ServerResponse mapToServerResponse(Server server) {
+    public ServerResponse mapToServerResponse(Server server) {
         return ServerResponse.builder()
                 .id(server.getId())
                 .name(server.getName())

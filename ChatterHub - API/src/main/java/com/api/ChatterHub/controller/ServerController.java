@@ -34,12 +34,6 @@ public class ServerController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/join")
-    public ResponseEntity<Void> joinServer(@PathVariable UUID id) {
-        serverService.joinServer(id);
-        return ResponseEntity.ok().build();
-    }
-
     @PostMapping("/{id}/leave")
     public ResponseEntity<Void> leaveServer(@PathVariable UUID id) {
         serverService.leaveServer(id);

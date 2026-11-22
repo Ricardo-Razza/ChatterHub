@@ -52,8 +52,8 @@
     <button
       type="button"
       (click)="toggleCamera()"
-      [disabled]="!perm.can(PERM.STREAM)"
-      [title]="perm.can(PERM.STREAM) ? '' : 'Você não tem permissão para transmitir'"
+      [disabled]="!perm.can(PERM.STREAM) && !userService.currentUser().isCameraOn"
+      [title]="perm.can(PERM.STREAM) || userService.currentUser().isCameraOn ? '' : 'Você não tem permissão para transmitir'"
       class="flex h-11 w-11 items-center justify-center rounded-full transition-colors"
       [ngClass]="
         userService.currentUser().isCameraOn
@@ -83,8 +83,8 @@
     <button
       type="button"
       (click)="toggleScreenShare()"
-      [disabled]="!perm.can(PERM.STREAM)"
-      [title]="perm.can(PERM.STREAM) ? '' : 'Você não tem permissão para transmitir'"
+      [disabled]="!perm.can(PERM.STREAM) && !voiceService.isSharingScreen()"
+      [title]="perm.can(PERM.STREAM) || voiceService.isSharingScreen() ? '' : 'Você não tem permissão para transmitir'"
       class="flex h-11 items-center gap-2 rounded-full px-5 font-medium transition-colors"
       [ngClass]="
         voiceService.isSharingScreen()

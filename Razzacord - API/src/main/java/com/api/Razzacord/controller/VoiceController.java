@@ -3,7 +3,9 @@ package com.api.Razzacord.controller;
 import com.api.Razzacord.model.User;
 import com.api.Razzacord.service.UserService;
 import com.api.Razzacord.repository.ChannelRepository;
+import com.api.Razzacord.model.Permission;
 import com.api.Razzacord.security.AccessService;
+import com.api.Razzacord.security.PermissionService;
 import com.api.Razzacord.voice.IceConfigService;
 import com.api.Razzacord.voice.LiveKitTokenService;
 import com.api.Razzacord.voice.VoiceRoomRegistry;
@@ -32,6 +34,7 @@ public class VoiceController {
     private final VoiceRoomRegistry registry;
     private final AccessService accessService;
     private final LiveKitTokenService liveKit;
+    private final PermissionService permissionService;
 
     /** Servidores STUN/TURN com credencial temporária por usuário. */
     @GetMapping("/ice-servers")
@@ -62,7 +65,9 @@ public class VoiceController {
     public ResponseEntity<Map<String, String>> sfu(@RequestParam UUID channelId) {
         User user = userService.getCurrentUserModel();
         accessService.requireVoiceChannelMember(channelId, user);
-        return liveKit.tokenFor(channelId.toString(), user.getId().toString(), user.getUsername())
+        UUID serverId = channelRepository.findById(channelId).orElseThrow().getServerId();
+        boolean canStream = permissionService.has(serverId, user.getId(), Permission.STREAM);
+        return liveKit.tokenFor(channelId.toString(), user.getId().toString(), user.getUsername(), canStream)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

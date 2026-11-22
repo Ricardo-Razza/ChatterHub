@@ -1,7 +1,9 @@
 package com.api.Razzacord.controller;
 
 import com.api.Razzacord.exception.ApiException;
+import com.api.Razzacord.model.Permission;
 import com.api.Razzacord.model.User;
+import com.api.Razzacord.security.PermissionService;
 import com.api.Razzacord.repository.ChannelRepository;
 import com.api.Razzacord.security.AccessService;
 import com.api.Razzacord.voice.VoiceMessages;
@@ -33,12 +35,15 @@ import java.util.UUID;
 @Controller
 public class VoiceWsController {
 
+    private static final Set<String> STREAM_KEYS =
+            Set.of("isCameraOn", "isSharingScreen", "cameraStreamId", "screenStreamId");
     private static final Set<String> SIGNAL_TYPES = Set.of("offer", "answer", "ice-candidate");
 
     private final SimpMessagingTemplate messagingTemplate;
     private final AccessService accessService;
     private final VoiceRoomRegistry registry;
     private final ChannelRepository channelRepository;
+    private final PermissionService permissionService;
     private final ThreadPoolTaskScheduler scheduler;
     private final long disconnectGraceMs;
 
@@ -46,12 +51,14 @@ public class VoiceWsController {
                              AccessService accessService,
                              VoiceRoomRegistry registry,
                              ChannelRepository channelRepository,
+                             PermissionService permissionService,
                              ThreadPoolTaskScheduler brokerHeartbeatScheduler,
                              @Value("${app.voice.disconnect-grace-ms:8000}") long disconnectGraceMs) {
         this.messagingTemplate = messagingTemplate;
         this.accessService = accessService;
         this.registry = registry;
         this.channelRepository = channelRepository;
+        this.permissionService = permissionService;
         this.scheduler = brokerHeartbeatScheduler;
         this.disconnectGraceMs = disconnectGraceMs;
     }
@@ -63,7 +70,8 @@ public class VoiceWsController {
         accessService.requireVoiceChannelMember(msg.getChannelId(), user);
 
         Set<UUID> changed = registry.join(msg.getChannelId(), user.getId(), user.getUsername(),
-                user.getAvatarUrl(), headers.getSessionId(), msg.getState());
+                user.getAvatarUrl(), headers.getSessionId(),
+                stateForUser(msg.getChannelId(), user, msg.getState()));
         changed.forEach(this::broadcastRoster);
     }
 
@@ -76,7 +84,8 @@ public class VoiceWsController {
     @MessageMapping("/voice.state")
     public void state(@Payload VoiceMessages.StateUpdate msg, Principal principal) {
         User user = accessService.userByPrincipal(principal.getName());
-        if (msg.getChannelId() != null && registry.updateState(msg.getChannelId(), user.getId(), msg.getState())) {
+        if (msg.getChannelId() != null && registry.updateState(msg.getChannelId(), user.getId(),
+                stateForUser(msg.getChannelId(), user, msg.getState()))) {
             broadcastRoster(msg.getChannelId());
         }
     }
@@ -100,6 +109,47 @@ public class VoiceWsController {
         payload.put("senderId", sender.getId().toString());
         payload.put("data", msg.getData());
         messagingTemplate.convertAndSendToUser(target.userId.toString(), "/queue/voice", payload);
+    }
+
+    /** Moderação de voz: silenciar ou desconectar alguém da sala. Sem permissão/hierarquia, ignora em silêncio. */
+    @MessageMapping("/voice.moderate")
+    public void moderate(@Payload VoiceMessages.Moderate msg, Principal principal) {
+        User actor = accessService.userByPrincipal(principal.getName());
+        if (msg.getChannelId() == null || msg.getTargetId() == null || msg.getAction() == null) return;
+        boolean mute = "mute".equals(msg.getAction());
+        if (!mute && !"disconnect".equals(msg.getAction())) return;
+        UUID channelId = msg.getChannelId();
+        UUID targetId = msg.getTargetId();
+        UUID serverId = channelRepository.findById(channelId).map(c -> c.getServerId()).orElse(null);
+        if (serverId == null) return;
+        if (!permissionService.has(serverId, actor.getId(), Permission.MUTE_MEMBERS)) return;
+        if (!registry.isInRoom(channelId, targetId) || !registry.isInRoom(channelId, actor.getId())) return;
+        if (permissionService.isOwner(serverId, targetId)
+                || permissionService.topPosition(serverId, targetId) >= permissionService.topPosition(serverId, actor.getId())) {
+            return;
+        }
+
+        if (mute) {
+            registry.updateState(channelId, targetId, Map.of("isMuted", true));
+            broadcastRoster(channelId);
+        } else {
+            registry.leave(targetId).forEach(this::broadcastRoster);
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "moderate");
+        payload.put("action", msg.getAction());
+        payload.put("channelId", channelId.toString());
+        messagingTemplate.convertAndSendToUser(targetId.toString(), "/queue/voice", payload);
+    }
+
+    /** Sem STREAM, câmera e tela são removidas do estado enviado pelo cliente. */
+    private Map<String, Object> stateForUser(UUID channelId, User user, Map<String, Object> state) {
+        if (state == null) return null;
+        UUID serverId = channelRepository.findById(channelId).map(c -> c.getServerId()).orElse(null);
+        if (serverId != null && permissionService.has(serverId, user.getId(), Permission.STREAM)) return state;
+        Map<String, Object> copy = new LinkedHashMap<>(state);
+        copy.keySet().removeAll(STREAM_KEYS);
+        return copy;
     }
 
     /**

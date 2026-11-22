@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,15 +41,17 @@ public class LiveKitTokenService {
         return !url.isBlank() && !apiKey.isBlank() && !apiSecret.isBlank();
     }
 
-    public Optional<Map<String, String>> tokenFor(String roomName, String identity, String displayName) {
+    public Optional<Map<String, String>> tokenFor(String roomName, String identity, String displayName, boolean canStream) {
         if (!isEnabled()) return Optional.empty();
         long now = System.currentTimeMillis();
-        Map<String, Object> video = Map.of(
+        Map<String, Object> video = new HashMap<>(Map.of(
                 "room", roomName,
                 "roomJoin", true,
                 "canPublish", true,
                 "canSubscribe", true,
-                "canPublishData", false);
+                "canPublishData", false));
+        // Sem STREAM, o SFU só aceita microfone (câmera e tela são recusadas no servidor de mídia).
+        if (!canStream) video.put("canPublishSources", List.of("microphone"));
         String token = Jwts.builder()
                 .issuer(apiKey)
                 .subject(identity)

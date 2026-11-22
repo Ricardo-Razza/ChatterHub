@@ -28,6 +28,13 @@ public final class VoiceMessages {
     }
 
     @Data
+    public static class Moderate {
+        private UUID channelId;
+        private UUID targetId;
+        private String action;
+    }
+
+    @Data
     public static class Signal {
         private UUID channelId;
         private UUID targetId;

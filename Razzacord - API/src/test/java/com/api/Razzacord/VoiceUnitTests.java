@@ -74,7 +74,7 @@ class VoiceUnitTests {
     void liveKitTokenCarriesRoomGrantAndIsSignedWithTheSecret() {
         String secret = "0123456789abcdef0123456789abcdef0123";
         var svc = new com.api.Razzacord.voice.LiveKitTokenService("ws://lk:7880", "devkey", secret, 600);
-        var out = svc.tokenFor("room-1", "user-1", "Alice").orElseThrow();
+        var out = svc.tokenFor("room-1", "user-1", "Alice", true).orElseThrow();
 
         var claims = io.jsonwebtoken.Jwts.parser()
                 .verifyWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
@@ -86,11 +86,24 @@ class VoiceUnitTests {
         assertEquals("room-1", video.get("room"));
         assertEquals(true, video.get("roomJoin"));
         assertEquals("ws://lk:7880", out.get("url"));
+        assertFalse(video.containsKey("canPublishSources"));
+    }
+
+    @Test
+    void tokenWithoutStreamLimitsSourcesToMicrophone() {
+        String secret = "0123456789abcdef0123456789abcdef0123";
+        var svc = new com.api.Razzacord.voice.LiveKitTokenService("ws://lk:7880", "devkey", secret, 600);
+        var out = svc.tokenFor("room-1", "user-1", "Alice", false).orElseThrow();
+        var claims = io.jsonwebtoken.Jwts.parser()
+                .verifyWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
+                .build().parseSignedClaims(out.get("token")).getPayload();
+        Map<?, ?> video = claims.get("video", Map.class);
+        assertEquals(java.util.List.of("microphone"), video.get("canPublishSources"));
     }
 
     @Test
     void liveKitDisabledWithoutConfigAndRejectsWeakSecret() {
-        assertTrue(new com.api.Razzacord.voice.LiveKitTokenService("", "", "", 600).tokenFor("r", "u", "n").isEmpty());
+        assertTrue(new com.api.Razzacord.voice.LiveKitTokenService("", "", "", 600).tokenFor("r", "u", "n", true).isEmpty());
         assertThrows(IllegalStateException.class,
                 () -> new com.api.Razzacord.voice.LiveKitTokenService("ws://x", "k", "curto", 600));
     }

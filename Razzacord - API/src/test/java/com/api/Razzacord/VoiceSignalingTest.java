@@ -47,6 +47,7 @@ class VoiceSignalingTest {
     @Autowired ServerService serverService;
     @Autowired com.api.Razzacord.service.InviteService inviteService;
     @Autowired ChannelService channelService;
+    @Autowired com.api.Razzacord.service.RoleService roleService;
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -165,6 +166,143 @@ class VoiceSignalingTest {
         Map<String, Object> last = next(b2Roster, "roster");
         assertEquals(1, ((List<?>) last.get("participants")).size(), "alice saiu; só bob na sala");
         b2.disconnect();
+    }
+
+    private record Room(AuthResponse owner, AuthResponse mod, AuthResponse plain, UUID serverId, UUID channelId) {}
+
+    /** Dono, um moderador (cargo MUTE_MEMBERS) e um membro comum num servidor com canal de voz. */
+    private Room newRoom(long defaultPermissions) {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        AuthResponse owner = userService.register(cred("own_" + suffix));
+        AuthResponse mod = userService.register(cred("mod_" + suffix));
+        AuthResponse plain = userService.register(cred("pln_" + suffix));
+        authenticateAs(owner.getUser().getUsername());
+        ServerResponse server = serverService.createServer(serverReq("srv " + suffix));
+        UUID voice = channelService.getChannelsByServer(server.getId()).stream()
+                .filter(c -> "voice".equals(c.getType())).findFirst().orElseThrow().getId();
+        String code = inviteService.createInvite(server.getId()).getCode();
+        roleService.setDefaultPermissions(server.getId(), defaultPermissions);
+        for (AuthResponse u : List.of(mod, plain)) {
+            authenticateAs(u.getUser().getUsername());
+            inviteService.accept(code);
+        }
+        authenticateAs(owner.getUser().getUsername());
+        com.api.Razzacord.dto.ServerRoleRequest req = new com.api.Razzacord.dto.ServerRoleRequest();
+        req.setName("Moderador");
+        req.setPermissions(com.api.Razzacord.model.Permission.MUTE_MEMBERS.bit());
+        UUID roleId = roleService.create(server.getId(), req).getId();
+        roleService.assign(server.getId(), mod.getUser().getId(), List.of(roleId));
+        SecurityContextHolder.clearContext();
+        return new Room(owner, mod, plain, server.getId(), voice);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> participantState(Map<String, Object> roster, UUID userId) {
+        for (Object p : (List<?>) roster.get("participants")) {
+            Map<?, ?> m = (Map<?, ?>) p;
+            if (userId.toString().equals(m.get("userId"))) return (Map<String, Object>) m.get("state");
+        }
+        return null;
+    }
+
+    @Test
+    void stateWithoutStreamStripsScreenAndCamera() throws Exception {
+        Room r = newRoom(1); // só CREATE_INVITE: sem STREAM
+        StompSession p = connect(r.plain().getToken());
+        BlockingQueue<Map<String, Object>> roster = subscribe(p, "/topic/voice/" + r.channelId());
+        p.send("/app/voice.join", Map.of("channelId", r.channelId().toString(),
+                "state", Map.of("isMuted", false, "isCameraOn", true, "cameraStreamId", "c1")));
+        next(roster, "roster");
+        p.send("/app/voice.state", Map.of("channelId", r.channelId().toString(),
+                "state", Map.of("isSharingScreen", true, "screenStreamId", "s1", "isMuted", true)));
+        Map<String, Object> st = null;
+        long end = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < end && st == null) {
+            Map<String, Object> m = participantState(next(roster, "roster"), r.plain().getUser().getId());
+            if (m != null && Boolean.TRUE.equals(m.get("isMuted"))) st = m;
+        }
+        assertNotNull(st, "estado atualizado (isMuted) deve chegar");
+        assertNotEquals(true, st.get("isSharingScreen"));
+        assertNotEquals(true, st.get("isCameraOn"));
+        assertFalse(st.containsKey("screenStreamId"));
+        assertFalse(st.containsKey("cameraStreamId"));
+        p.disconnect();
+    }
+
+    @Test
+    void moderateMuteByAuthorizedMemberMutesTarget() throws Exception {
+        Room r = newRoom(65);
+        StompSession m = connect(r.mod().getToken());
+        StompSession p = connect(r.plain().getToken());
+        BlockingQueue<Map<String, Object>> roster = subscribe(p, "/topic/voice/" + r.channelId());
+        BlockingQueue<Map<String, Object>> pSignals = subscribe(p, "/user/queue/voice");
+        m.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of()));
+        p.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of("isMuted", false)));
+        Thread.sleep(500);
+
+        m.send("/app/voice.moderate", Map.of("channelId", r.channelId().toString(),
+                "targetId", r.plain().getUser().getId().toString(), "action", "mute"));
+        Map<String, Object> msg = next(pSignals, "moderate");
+        assertEquals("mute", msg.get("action"));
+        assertEquals(r.channelId().toString(), msg.get("channelId"));
+        boolean muted = false;
+        long end = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < end && !muted) {
+            Map<String, Object> st = participantState(next(roster, "roster"), r.plain().getUser().getId());
+            muted = st != null && Boolean.TRUE.equals(st.get("isMuted"));
+        }
+        assertTrue(muted, "roster deve mostrar o alvo mutado");
+        m.disconnect();
+        p.disconnect();
+    }
+
+    @Test
+    void moderateWithoutPermissionIsIgnored() throws Exception {
+        Room r = newRoom(65);
+        StompSession m = connect(r.mod().getToken());
+        StompSession p = connect(r.plain().getToken());
+        BlockingQueue<Map<String, Object>> mSignals = subscribe(m, "/user/queue/voice");
+        BlockingQueue<Map<String, Object>> roster = subscribe(m, "/topic/voice/" + r.channelId());
+        m.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of("isMuted", false)));
+        p.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of()));
+        Thread.sleep(500);
+        roster.clear();
+
+        // membro comum tenta mutar o moderador: sem MUTE_MEMBERS, ignorado
+        p.send("/app/voice.moderate", Map.of("channelId", r.channelId().toString(),
+                "targetId", r.mod().getUser().getId().toString(), "action", "mute"));
+        Thread.sleep(800);
+        assertTrue(mSignals.stream().noneMatch(x -> "moderate".equals(x.get("type"))));
+        assertTrue(roster.isEmpty(), "nenhum roster novo");
+        assertTrue(m.isConnected() && p.isConnected());
+        m.disconnect();
+        p.disconnect();
+    }
+
+    @Test
+    void moderateDisconnectRemovesTargetFromRoster() throws Exception {
+        Room r = newRoom(65);
+        StompSession m = connect(r.mod().getToken());
+        StompSession p = connect(r.plain().getToken());
+        BlockingQueue<Map<String, Object>> roster = subscribe(m, "/topic/voice/" + r.channelId());
+        BlockingQueue<Map<String, Object>> pSignals = subscribe(p, "/user/queue/voice");
+        m.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of()));
+        p.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of()));
+        Thread.sleep(500);
+
+        m.send("/app/voice.moderate", Map.of("channelId", r.channelId().toString(),
+                "targetId", r.plain().getUser().getId().toString(), "action", "disconnect"));
+        assertEquals("disconnect", next(pSignals, "moderate").get("action"));
+        boolean removed = false;
+        long end = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < end && !removed) {
+            Map<String, Object> ro = next(roster, "roster");
+            removed = ((List<?>) ro.get("participants")).size() == 1
+                    && participantState(ro, r.plain().getUser().getId()) == null;
+        }
+        assertTrue(removed, "alvo sai do roster");
+        m.disconnect();
+        p.disconnect();
     }
 
     private AuthRequest cred(String username) {

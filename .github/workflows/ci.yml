@@ -75,7 +75,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
       - name: Empacotar aplicação
-        run: npm run dist -- --win nsis portable
+        run: npm run dist -- --win nsis portable --x64
       - name: Guardar artefatos do desktop
         uses: actions/upload-artifact@v4
         with:
@@ -108,4 +108,4 @@ jobs:
       - name: Publicar instaladores no GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist -- --win nsis portable --publish always
+        run: npm run dist -- --win nsis portable --x64 --publish always

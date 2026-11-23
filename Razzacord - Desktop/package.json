@@ -51,7 +51,8 @@
     "publish": {
       "provider": "github",
       "owner": "Ricardo-Razza",
-      "repo": "ChatterHub"
+      "repo": "ChatterHub",
+      "releaseType": "release"
     },
     "portable": {
       "artifactName": "${productName}-${version}-${arch}-portable.${ext}"

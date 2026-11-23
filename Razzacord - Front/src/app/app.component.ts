@@ -27,6 +27,8 @@ import { DmPanelComponent } from './chat/dm-panel/dm-panel.component';
 })
 export class AppComponent {
   showDmPanel = false;
+  readonly isDesktop = typeof window !== 'undefined'
+    && !!(window as any).electronAPI?.isDesktop;
 
   readonly dmUnread = computed(() => this.dmService.totalUnread());
 
@@ -37,5 +39,17 @@ export class AppComponent {
 
   toggleDmPanel(): void {
     this.showDmPanel = !this.showDmPanel;
+  }
+
+  minimizeWindow(): void {
+    (window as any).electronAPI?.minimize();
+  }
+
+  maximizeWindow(): void {
+    (window as any).electronAPI?.maximize();
+  }
+
+  closeWindow(): void {
+    (window as any).electronAPI?.close();
   }
 }

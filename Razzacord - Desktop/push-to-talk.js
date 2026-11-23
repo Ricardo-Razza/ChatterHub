@@ -49,6 +49,17 @@ function toUiohookName(code) {
     ShiftRight: 'ShiftRight',
     MetaLeft: 'Meta',
     MetaRight: 'MetaRight',
+    Backquote: 'Grave',
+    Backslash: 'Backslash',
+    BracketLeft: 'BracketLeft',
+    BracketRight: 'BracketRight',
+    Comma: 'Comma',
+    Period: 'Period',
+    Semicolon: 'Semicolon',
+    Slash: 'Slash',
+    Quote: 'Quote',
+    Minus: 'Minus',
+    Equal: 'Equal',
   };
   return aliases[code] || code; // Space, Backquote, F1..F24, ArrowUp, Numpad0, ...
 }

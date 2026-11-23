@@ -1,12 +1,19 @@
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-ch-bg-deep p-4">
-  <div class="w-full max-w-sm rounded-2xl bg-ch-bg-dark p-8 shadow-2xl border border-ch-border animate-fadeIn">
+<div class="fixed inset-x-0 bottom-0 top-0 z-50 flex items-center justify-center bg-ch-bg-deep p-4 desktop-login">
+  <div class="grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-ch-border bg-ch-bg-dark/95 shadow-[0_24px_80px_rgba(7,18,36,0.42)] backdrop-blur-xl md:grid-cols-[1.05fr_0.95fr] animate-fadeIn">
+    <div class="relative hidden min-h-[620px] overflow-hidden bg-[#91bad7] md:block">
+      <div class="absolute inset-0">
+        <img src="assets/razzacord-login.jpg" alt="Razzacord em uma conversa de voz"
+          class="h-full w-full object-cover object-[50%_50%]" />
+      </div>
+    </div>
+
+    <div class="p-8 sm:p-10">
 
     <!-- Logo & Título -->
     <div class="mb-6 text-center">
       <div class="mb-3 flex justify-center">
-        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-ch-brand shadow-brand-glow">
-          <lucide-icon name="message-square" [size]="36" class="text-white"></lucide-icon>
-        </div>
+        <img src="assets/razzacord-avatar-original.jpg" alt="Razzacord"
+          class="mx-auto h-20 w-20 rounded-[22px] border-4 border-white object-cover object-[50%_34%] shadow-brand-glow" />
       </div>
       <h1 class="text-2xl font-bold text-ch-text-primary">Razzacord</h1>
       <p class="mt-1 text-sm text-ch-text-muted">
@@ -100,5 +107,6 @@
       </button>
     </form>
 
+    </div>
   </div>
 </div>

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const appAudio = require('./app-audio');
 const pushToTalk = require('./push-to-talk');
+const { autoUpdater } = require('electron-updater');
 
 const IS_DEV = process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
 
@@ -11,11 +12,20 @@ const IS_DEV = process.argv.includes('--dev') || process.env.NODE_ENV === 'devel
  * Em desenvolvimento (--dev) usa o servidor do Angular.
  */
 function resolveAppUrl() {
-  if (process.env.RAZZACORD_URL) return process.env.RAZZACORD_URL;
+  if (process.env.RAZZACORD_URL) {
+    const configured = process.env.RAZZACORD_URL;
+    try {
+      const url = new URL(configured);
+      if (IS_DEV || url.protocol === 'https:' || (url.protocol === 'http:' && url.hostname === 'localhost')) return url.href;
+    } catch (_) {}
+  }
   if (IS_DEV) return 'http://localhost:4200';
   try {
     const cfg = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'config.json'), 'utf8'));
-    if (typeof cfg.appUrl === 'string' && cfg.appUrl) return cfg.appUrl;
+    if (typeof cfg.appUrl === 'string' && cfg.appUrl) {
+      const url = new URL(cfg.appUrl);
+      if (IS_DEV || url.protocol === 'https:' || (url.protocol === 'http:' && url.hostname === 'localhost')) return url.href;
+    }
   } catch (_) {
     /* sem config: usa o padrão */
   }
@@ -44,9 +54,53 @@ let isQuitting = false;
 let armedSourceId = null;
 let knownSourceIds = new Set();
 
+function sendUpdateState(state, detail = {}) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('app:update-state', { state, ...detail });
+  }
+}
+
+function setupUpdates() {
+  if (IS_DEV || process.platform !== 'win32' || !app.isPackaged) return;
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.on('checking-for-update', () => sendUpdateState('checking'));
+  autoUpdater.on('update-available', (info) => {
+    sendUpdateState('available', { version: info.version });
+    if (tray) {
+      tray.setContextMenu(Menu.buildFromTemplate([
+        { label: `Atualização ${info.version} disponível`, enabled: false },
+        { label: 'Baixar atualização', click: () => autoUpdater.downloadUpdate().catch(console.error) },
+        { type: 'separator' },
+        { label: 'Abrir Razzacord', click: showWindow },
+        { label: 'Recarregar', click: () => mainWindow && mainWindow.loadURL(APP_URL) },
+        { type: 'separator' },
+        { label: 'Fechar Razzacord', click: () => { isQuitting = true; app.quit(); } },
+      ]));
+    }
+  });
+  autoUpdater.on('update-not-available', () => sendUpdateState('current'));
+  autoUpdater.on('download-progress', (progress) => sendUpdateState('downloading', {
+    percent: Math.round(progress.percent || 0),
+  }));
+  autoUpdater.on('update-downloaded', (info) => {
+    sendUpdateState('downloaded', { version: info.version });
+    new Notification({
+      title: 'Atualização pronta',
+      body: `Razzacord ${info.version} será instalado ao fechar o aplicativo.`,
+    }).show();
+  });
+  autoUpdater.on('error', (error) => sendUpdateState('error', { message: error.message }));
+
+  autoUpdater.checkForUpdates().catch((error) => {
+    sendUpdateState('error', { message: error.message });
+  });
+}
+
 function isTrustedUrl(url) {
   try {
-    return new URL(url).origin === APP_ORIGIN || url.startsWith('file://');
+    return new URL(url).origin === APP_ORIGIN;
   } catch (_) {
     return false;
   }
@@ -68,6 +122,7 @@ function createWindow() {
     backgroundColor: '#0f1117',
     autoHideMenuBar: true,
     show: false,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -112,7 +167,9 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!isTrustedUrl(url)) {
+    const offlineUrl = new URL(`file://${path.join(__dirname, 'offline.html').replace(/\\/g, '/')}`).href;
+    const isOfflinePage = url === offlineUrl;
+    if (!isTrustedUrl(url) && !isOfflinePage) {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) shell.openExternal(url);
     }
@@ -167,7 +224,33 @@ function showWindow() {
   mainWindow.focus();
 }
 
-app.on('second-instance', showWindow);
+app.on('second-instance', (_event, argv) => {
+  showWindow();
+  const protocolUrl = argv.find((arg) => arg.startsWith('razzacord://'));
+  if (protocolUrl && mainWindow) {
+    try {
+      const route = new URL(protocolUrl).pathname.replace(/^\/+/, '');
+      mainWindow.loadURL(route ? `${APP_URL.replace(/\/$/, '')}/${route}` : APP_URL);
+    } catch (_) {
+      mainWindow.loadURL(APP_URL);
+    }
+  }
+});
+app.setAsDefaultProtocolClient('razzacord');
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  if (!mainWindow) return;
+  showWindow();
+  if (/^razzacord:\/\//.test(url)) {
+    try {
+      const route = new URL(url).pathname.replace(/^\/+/, '');
+      mainWindow.loadURL(route ? `${APP_URL.replace(/\/$/, '')}/${route}` : APP_URL);
+    } catch (_) {
+      mainWindow.loadURL(APP_URL);
+    }
+  }
+});
 
 // ---------------------------------------------------------------------------
 // IPC
@@ -182,6 +265,31 @@ ipcMain.on('window-close', (e) => isTrustedSender(e) && mainWindow && mainWindow
 ipcMain.on('notify', (e, { title, body } = {}) => {
   if (!isTrustedSender(e) || !Notification.isSupported()) return;
   new Notification({ title: String(title || 'Razzacord').slice(0, 100), body: String(body || '').slice(0, 300) }).show();
+});
+
+ipcMain.handle('app:auto-launch', (e, enabled) => {
+  if (!isTrustedSender(e) || typeof enabled !== 'boolean') return false;
+  app.setLoginItemSettings({ openAtLogin: enabled });
+  return app.getLoginItemSettings().openAtLogin;
+});
+
+ipcMain.handle('app:update-check', (e) => {
+  if (!isTrustedSender(e) || IS_DEV || !app.isPackaged) return false;
+  autoUpdater.checkForUpdates().catch(() => {});
+  return true;
+});
+
+ipcMain.handle('app:update-download', (e) => {
+  if (!isTrustedSender(e) || IS_DEV || !app.isPackaged) return false;
+  autoUpdater.downloadUpdate().catch(() => {});
+  return true;
+});
+
+ipcMain.handle('app:update-install', (e) => {
+  if (!isTrustedSender(e) || IS_DEV || !app.isPackaged) return false;
+  isQuitting = true;
+  autoUpdater.quitAndInstall();
+  return true;
 });
 
 ipcMain.handle('share:capabilities', (e) => {
@@ -272,6 +380,7 @@ app.whenReady().then(() => {
   APP_ORIGIN = new URL(APP_URL).origin;
   createWindow();
   createTray();
+  setupUpdates();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

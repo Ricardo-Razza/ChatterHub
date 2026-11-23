@@ -1,19 +1,19 @@
 {
   "/api": {
-    "target": "http://127.0.0.1:8080",
+    "target": "http://127.0.0.1:8050",
     "secure": false,
     "changeOrigin": true,
     "headers": {
-      "Origin": "http://127.0.0.1:8080"
+      "Origin": "http://127.0.0.1:8050"
     }
   },
   "/ws": {
-    "target": "http://127.0.0.1:8080",
+    "target": "http://127.0.0.1:8050",
     "secure": false,
     "ws": true,
     "changeOrigin": true,
     "headers": {
-      "Origin": "http://127.0.0.1:8080"
+      "Origin": "http://127.0.0.1:8050"
     }
   }
 }

@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
   sendNotification: (title, body) => ipcRenderer.send('notify', { title, body }),
+  setAutoLaunch: (enabled) => ipcRenderer.invoke('app:auto-launch', enabled),
+  checkForUpdate: () => ipcRenderer.invoke('app:update-check'),
+  downloadUpdate: () => ipcRenderer.invoke('app:update-download'),
+  installUpdate: () => ipcRenderer.invoke('app:update-install'),
+  onUpdateState: (cb) => listen('app:update-state', cb),
 
   // Compartilhamento de tela com áudio só do aplicativo escolhido
   listShareSources: () => ipcRenderer.invoke('share:list-sources'),
@@ -29,6 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startShare: (selection) => ipcRenderer.invoke('share:start', selection),
   stopShare: () => ipcRenderer.invoke('share:stop'),
   onAppAudio: (cb) => listen('share:audio', cb),
+  onAppAudioEnded: (cb) => listen('share:audio-ended', cb),
 
   // Push-to-talk global
   setPushToTalk: (code) => ipcRenderer.invoke('ptt:set', code),

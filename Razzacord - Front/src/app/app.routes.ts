@@ -13,6 +13,7 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '',
+    loadComponent: () =>
+      import('./layout/not-found/not-found.component').then((m) => m.NotFoundComponent),
   },
 ];

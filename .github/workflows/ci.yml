@@ -55,3 +55,57 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Compilar para produção
         run: npm run build -- --configuration production
+
+  desktop:
+    name: Desktop · Empacotamento Windows
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: 'Razzacord - Desktop'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'Razzacord - Desktop/package-lock.json'
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Empacotar aplicação
+        run: npm run dist -- --win nsis portable
+      - name: Guardar artefatos do desktop
+        uses: actions/upload-artifact@v4
+        with:
+          name: razzacord-desktop-windows
+          path: 'Razzacord - Desktop/dist/*.exe'
+          if-no-files-found: error
+
+  release:
+    name: Desktop · Publicar release
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: [desktop]
+    runs-on: windows-2022
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: 'Razzacord - Desktop'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'Razzacord - Desktop/package-lock.json'
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Publicar instaladores no GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist -- --win nsis portable --publish always

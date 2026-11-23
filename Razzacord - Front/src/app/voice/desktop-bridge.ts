@@ -34,6 +34,10 @@ export interface DesktopBridge {
   /** Push-to-talk global (funciona com o jogo em foco). */
   setPushToTalk(key: string | null): Promise<boolean>;
   onPushToTalk(cb: (active: boolean) => void): () => void;
+  checkForUpdate(): Promise<boolean>;
+  downloadUpdate(): Promise<boolean>;
+  installUpdate(): Promise<boolean>;
+  onUpdateState(cb: (state: { state: string; version?: string; percent?: number; message?: string }) => void): () => void;
 }
 
 export function getDesktopBridge(): DesktopBridge | null {

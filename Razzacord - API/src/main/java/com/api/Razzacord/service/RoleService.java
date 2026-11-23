@@ -59,7 +59,7 @@ public class RoleService {
         String name = validName(req.getName());
         String color = req.getColor() == null ? DEFAULT_COLOR : validColor(req.getColor());
         long perms = req.getPermissions() == null ? 0 : validPermissions(req.getPermissions());
-        requireGrantable(serverId, me, perms);
+        requireGrantable(serverId, me, perms, 0L);
         if (roleRepository.countByServerId(serverId) >= MAX_ROLES) {
             throw ApiException.badRequest("Limite de " + MAX_ROLES + " cargos por servidor atingido");
         }
@@ -94,7 +94,7 @@ public class RoleService {
         String name = req.getName() == null ? null : validName(req.getName());
         String color = req.getColor() == null ? null : validColor(req.getColor());
         Long perms = req.getPermissions() == null ? null : validPermissions(req.getPermissions());
-        if (perms != null) requireGrantable(serverId, me, perms);
+        if (perms != null) requireGrantable(serverId, me, perms, role.getPermissions());
 
         if (name != null) role.setName(name);
         if (color != null) role.setColor(color);
@@ -258,8 +258,9 @@ public class RoleService {
         }
     }
 
-    private void requireGrantable(UUID serverId, User me, long perms) {
-        if ((perms & ~permissionService.effective(serverId, me.getId())) != 0) {
+    /** Só os bits acrescentados (ausentes em {@code current}) precisam ser possuídos por quem edita. */
+    private void requireGrantable(UUID serverId, User me, long perms, long current) {
+        if ((perms & ~current & ~permissionService.effective(serverId, me.getId())) != 0) {
             throw ApiException.forbidden("Você não pode conceder permissões que não possui");
         }
     }

@@ -22,6 +22,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -35,9 +36,7 @@ import java.util.UUID;
 @Controller
 public class VoiceWsController {
 
-    private static final Set<String> STREAM_KEYS =
-            Set.of("isCameraOn", "isSharingScreen", "cameraStreamId", "screenStreamId");
-    private static final Set<String> SIGNAL_TYPES = Set.of("offer", "answer", "ice-candidate");
+        private static final Set<String> SIGNAL_TYPES = Set.of("offer", "answer", "ice-candidate");
 
     private final SimpMessagingTemplate messagingTemplate;
     private final AccessService accessService;
@@ -142,13 +141,16 @@ public class VoiceWsController {
         messagingTemplate.convertAndSendToUser(targetId.toString(), "/queue/voice", payload);
     }
 
-    /** Sem STREAM, câmera e tela são removidas do estado enviado pelo cliente. */
+    /** Sem STREAM, câmera e tela são forçadas para desligado (sobrescreve um "ligado" anterior no registro). */
     private Map<String, Object> stateForUser(UUID channelId, User user, Map<String, Object> state) {
         if (state == null) return null;
         UUID serverId = channelRepository.findById(channelId).map(c -> c.getServerId()).orElse(null);
         if (serverId != null && permissionService.has(serverId, user.getId(), Permission.STREAM)) return state;
         Map<String, Object> copy = new LinkedHashMap<>(state);
-        copy.keySet().removeAll(STREAM_KEYS);
+        copy.put("isCameraOn", false);
+        copy.put("isSharingScreen", false);
+        copy.put("cameraStreamId", null);
+        copy.put("screenStreamId", null);
         return copy;
     }
 
@@ -169,11 +171,20 @@ public class VoiceWsController {
 
     /** Tira o usuário da sala de voz de um canal deste servidor (ex.: ao ser expulso), atualizando os rosters. */
     public void kickFromVoice(UUID serverId, UUID userId) {
-        boolean inServerRoom = channelRepository.findByServerId(serverId).stream()
-                .anyMatch(c -> registry.isInRoom(c.getId(), userId));
-        if (inServerRoom) {
-            registry.leave(userId).forEach(this::broadcastRoster);
+        List<UUID> channels = channelRepository.findByServerId(serverId).stream()
+                .map(c -> c.getId())
+                .filter(id -> registry.isInRoom(id, userId))
+                .toList();
+        if (channels.isEmpty()) return;
+        // Avisa o cliente antes: ele precisa largar a chamada (inclusive o SFU), não só sumir do roster.
+        for (UUID channelId : channels) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "moderate");
+            payload.put("action", "disconnect");
+            payload.put("channelId", channelId.toString());
+            messagingTemplate.convertAndSendToUser(userId.toString(), "/queue/voice", payload);
         }
+        registry.leave(userId).forEach(this::broadcastRoster);
     }
 
     private void broadcastRoster(UUID channelId) {

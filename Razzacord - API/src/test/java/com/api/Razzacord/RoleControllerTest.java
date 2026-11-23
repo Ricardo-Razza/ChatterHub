@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class RoleControllerTest {
 
-    private static final long CREATE_INVITE = 1, MANAGE_CHANNELS = 2, KICK_MEMBERS = 16, MANAGE_ROLES = 128;
+    private static final long CREATE_INVITE = 1, MANAGE_CHANNELS = 2, MANAGE_MESSAGES = 8, KICK_MEMBERS = 16, MANAGE_ROLES = 128;
 
     @LocalServerPort int port;
     @Autowired UserService userService;
@@ -183,6 +183,19 @@ class RoleControllerTest {
                 Map.of("name", "Convida", "permissions", CREATE_INVITE)).getStatusCode().value());
         assertEquals(403, call(HttpMethod.PUT, roles(s.serverId) + "/" + s.low, s.mgr.token(),
                 Map.of("permissions", KICK_MEMBERS)).getStatusCode().value());
+    }
+
+    @Test
+    void managerCanRenameLowerRoleHoldingBitHeLacksWhenMaskUnchanged() {
+        Setup s = setup();
+        String helper = s.low; // abaixo do Gerente; o dono lhe dá um bit que o gerente não tem
+        assertEquals(200, call(HttpMethod.PUT, roles(s.serverId) + "/" + helper, s.owner.token(),
+                Map.of("permissions", MANAGE_MESSAGES)).getStatusCode().value());
+        assertEquals(200, call(HttpMethod.PUT, roles(s.serverId) + "/" + helper, s.mgr.token(),
+                Map.of("name", "Ajudante", "permissions", MANAGE_MESSAGES)).getStatusCode().value());
+        // acrescentar um bit que ele não tem continua proibido
+        assertEquals(403, call(HttpMethod.PUT, roles(s.serverId) + "/" + helper, s.mgr.token(),
+                Map.of("permissions", MANAGE_MESSAGES | KICK_MEMBERS)).getStatusCode().value());
     }
 
     @Test

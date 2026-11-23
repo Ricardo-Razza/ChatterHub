@@ -224,8 +224,8 @@ class VoiceSignalingTest {
         assertNotNull(st, "estado atualizado (isMuted) deve chegar");
         assertNotEquals(true, st.get("isSharingScreen"));
         assertNotEquals(true, st.get("isCameraOn"));
-        assertFalse(st.containsKey("screenStreamId"));
-        assertFalse(st.containsKey("cameraStreamId"));
+        assertNull(st.get("screenStreamId"));
+        assertNull(st.get("cameraStreamId"));
         p.disconnect();
     }
 
@@ -302,6 +302,62 @@ class VoiceSignalingTest {
         }
         assertTrue(removed, "alvo sai do roster");
         m.disconnect();
+        p.disconnect();
+    }
+
+    @Test
+    void revokedStreamStillLetsUserTurnCameraAndScreenOff() throws Exception {
+        Room r = newRoom(65); // CREATE_INVITE + STREAM
+        StompSession p = connect(r.plain().getToken());
+        BlockingQueue<Map<String, Object>> roster = subscribe(p, "/topic/voice/" + r.channelId());
+        p.send("/app/voice.join", Map.of("channelId", r.channelId().toString(),
+                "state", Map.of("isSharingScreen", true, "screenStreamId", "s1", "isCameraOn", true, "cameraStreamId", "c1")));
+        Map<String, Object> on = participantState(next(roster, "roster"), r.plain().getUser().getId());
+        assertEquals(true, on.get("isSharingScreen"));
+
+        authenticateAs(r.owner().getUser().getUsername());
+        roleService.setDefaultPermissions(r.serverId(), 1L); // revoga STREAM
+        SecurityContextHolder.clearContext();
+        p.send("/app/voice.state", Map.of("channelId", r.channelId().toString(),
+                "state", Map.of("isSharingScreen", false, "isCameraOn", false)));
+        Map<String, Object> st = null;
+        long end = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < end && st == null) {
+            Map<String, Object> m = participantState(next(roster, "roster"), r.plain().getUser().getId());
+            if (m != null && Boolean.FALSE.equals(m.get("isSharingScreen"))) st = m;
+        }
+        assertNotNull(st, "roster deve mostrar a tela desligada");
+        assertEquals(false, st.get("isCameraOn"));
+        assertNull(st.get("screenStreamId"));
+        assertNull(st.get("cameraStreamId"));
+        p.disconnect();
+    }
+
+    @Test
+    void kickedMemberReceivesDisconnectAndLeavesRoster() throws Exception {
+        Room r = newRoom(65);
+        StompSession o = connect(r.owner().getToken());
+        StompSession p = connect(r.plain().getToken());
+        BlockingQueue<Map<String, Object>> roster = subscribe(o, "/topic/voice/" + r.channelId());
+        BlockingQueue<Map<String, Object>> pSignals = subscribe(p, "/user/queue/voice");
+        o.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of()));
+        p.send("/app/voice.join", Map.of("channelId", r.channelId().toString(), "state", Map.of()));
+        Thread.sleep(500);
+
+        authenticateAs(r.owner().getUser().getUsername());
+        serverService.kick(r.serverId(), r.plain().getUser().getId());
+        SecurityContextHolder.clearContext();
+
+        Map<String, Object> msg = next(pSignals, "moderate");
+        assertEquals("disconnect", msg.get("action"));
+        assertEquals(r.channelId().toString(), msg.get("channelId"));
+        boolean removed = false;
+        long end = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < end && !removed) {
+            removed = participantState(next(roster, "roster"), r.plain().getUser().getId()) == null;
+        }
+        assertTrue(removed, "expulso sai do roster");
+        o.disconnect();
         p.disconnect();
     }
 

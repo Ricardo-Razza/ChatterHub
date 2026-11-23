@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDesktop: true,
 
   supportsAppAudio,
+  // Áudio do PC inteiro sem a chamada (mesmo requisito do áudio por aplicativo).
+  supportsSystemAudio: supportsAppAudio,
 
   // Controles de janela e notificações
   minimize: () => ipcRenderer.send('window-minimize'),

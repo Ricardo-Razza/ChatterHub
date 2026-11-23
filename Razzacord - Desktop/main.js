@@ -153,7 +153,7 @@ function createWindow() {
     try {
       const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
       const source = sources.find((s) => s.id === wanted);
-      // O áudio de sistema (loopback) fica de fora de propósito: ele carregaria a call e tudo o que toca no PC.
+      // O loopback do Chromium carregaria a call junto; o áudio do PC vem do SystemLoopback (share:start), sem o Razzacord.
       callback(source ? { video: source } : {});
     } catch (err) {
       console.error('[Razzacord Desktop] Erro ao obter fonte de captura:', err);
@@ -340,16 +340,21 @@ ipcMain.handle('share:list-audio-apps', async (e) => {
 
 ipcMain.handle('share:start', async (e, selection = {}) => {
   if (!isTrustedSender(e)) throw new Error('remetente não confiável');
-  const { sourceId, audioPid } = selection;
+  const { sourceId, audioPid, systemAudio } = selection;
   if (typeof sourceId !== 'string' || !knownSourceIds.has(sourceId)) {
     throw new Error('Fonte de captura inválida');
   }
   armedSourceId = sourceId;
 
   appAudio.stop();
-  if (Number.isInteger(audioPid) && audioPid > 0) {
+  // Áudio do PC inteiro: tudo menos a árvore de processos do Razzacord (as vozes da chamada ficam de fora).
+  // Áudio de um aplicativo: só a árvore do PID escolhido.
+  let target = null;
+  if (systemAudio === true) target = { pid: process.pid, mode: 'exclude' };
+  else if (Number.isInteger(audioPid) && audioPid > 0) target = { pid: audioPid, mode: 'include' };
+  if (target) {
     const sender = e.sender;
-    appAudio.start(audioPid, {
+    appAudio.start(target.pid, target.mode, {
       onData: (buf) => {
         if (!sender.isDestroyed()) sender.send('share:audio', buf);
       },

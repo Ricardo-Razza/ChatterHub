@@ -4,9 +4,13 @@ import { LucideAngularModule } from "lucide-angular";
 import { VoiceService, ScreenQualityId, ScreenContent } from "../../services/voice.service";
 import { ShareSource } from "../desktop-bridge";
 
+/** Valor do seletor de áudio para "todo o áudio do PC, menos o Razzacord". */
+const SYSTEM_AUDIO = "system";
+
 /**
- * Seletor de tela/janela do app desktop. Escolhe também de qual aplicativo sai o áudio da transmissão:
- * só esse processo é capturado, então Discord, a call e o resto do sistema não vão para a live.
+ * Seletor de tela/janela do app desktop. Escolhe também o áudio da transmissão:
+ * - tela inteira: todo o áudio do PC, menos o Razzacord (as vozes da chamada não vão para a live);
+ * - janela: só o áudio daquele aplicativo.
  */
 @Component({
   selector: "app-screen-picker",
@@ -17,8 +21,9 @@ import { ShareSource } from "../desktop-bridge";
 export class ScreenPickerComponent {
   readonly tab = signal<"screen" | "window">("window");
   readonly selectedId = signal<string | null>(null);
-  /** "" = sem áudio; senão o PID escolhido */
+  /** "" = sem áudio; "system" = áudio do PC sem a chamada; senão o PID escolhido */
   readonly audioPid = signal<string>("");
+  readonly systemAudioValue = SYSTEM_AUDIO;
   private audioTouched = false;
 
   readonly visibleSources = computed<ShareSource[]>(() =>
@@ -49,10 +54,14 @@ export class ScreenPickerComponent {
 
   select(source: ShareSource): void {
     this.selectedId.set(source.id);
-    // Janela: sugere o áudio do próprio aplicativo. Tela inteira: sem áudio, a menos que o usuário escolha um app.
+    // Como no Discord: tela inteira leva o áudio do PC (sem a chamada); janela leva o áudio do próprio aplicativo.
     if (!this.audioTouched) {
-      const owner = source.pid && this.voiceService.pickerApps().some((a) => a.pid === source.pid) ? String(source.pid) : "";
-      this.audioPid.set(owner);
+      if (source.isScreen) {
+        this.audioPid.set(this.voiceService.supportsSystemAudio ? SYSTEM_AUDIO : "");
+      } else {
+        const owner = source.pid && this.voiceService.pickerApps().some((a) => a.pid === source.pid) ? String(source.pid) : "";
+        this.audioPid.set(owner);
+      }
     }
   }
 
@@ -64,9 +73,12 @@ export class ScreenPickerComponent {
   confirm(): void {
     const source = this.selected();
     if (!source) return;
+    const audio = this.audioPid();
+    const systemAudio = audio === SYSTEM_AUDIO;
     this.voiceService.confirmPicker({
       sourceId: source.id,
-      audioPid: this.audioPid() ? Number(this.audioPid()) : null,
+      audioPid: audio && !systemAudio ? Number(audio) : null,
+      systemAudio,
     });
   }
 

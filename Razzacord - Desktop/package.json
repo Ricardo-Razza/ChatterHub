@@ -6,9 +6,14 @@
   "author": "Razzacord Team",
   "license": "MIT",
   "scripts": {
+    "build:native": "node native/build.js",
+    "prestart": "node native/build.js",
+    "predev": "node native/build.js",
     "start": "electron .",
     "dev": "electron . --dev",
+    "prepack": "node native/build.js",
     "pack": "electron-builder --dir",
+    "predist": "node native/build.js",
     "dist": "electron-builder"
   },
   "keywords": ["chat", "voice", "webrtc", "electron", "razzacord"],
@@ -31,10 +36,12 @@
       "push-to-talk.js",
       "offline.html",
       "assets/**/*",
+      "native/bin/SystemLoopback.exe",
       "package.json"
     ],
     "asarUnpack": [
-      "node_modules/application-loopback/bin/**/*"
+      "node_modules/application-loopback/bin/**/*",
+      "native/bin/**/*"
     ],
     "win": {
       "target": ["nsis", "portable"],

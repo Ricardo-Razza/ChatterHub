@@ -208,6 +208,7 @@ export class VoiceService {
   readonly screenPresets = SCREEN_PRESETS;
   readonly isDesktop = !!getDesktopBridge();
   readonly supportsAppAudio = !!getDesktopBridge()?.supportsAppAudio;
+  readonly supportsSystemAudio = !!getDesktopBridge()?.supportsSystemAudio;
 
   readonly currentUserId = computed(() => this.auth.currentUser().id);
   readonly isConnected = computed(() => this._phase() !== "idle");
@@ -1231,13 +1232,15 @@ export class VoiceService {
     this.displayStream = stream;
 
     let audioTrack: MediaStreamTrack | null = null;
-    if (selection.audioPid) {
+    if (selection.audioPid || selection.systemAudio) {
       try {
         this.appAudio = new AppAudioCapture();
-        audioTrack = await this.appAudio.start(this.ensureAudioContext(), bridge);
+        audioTrack = await this.appAudio.start(this.ensureAudioContext(), bridge, () => {
+          if (this._isSharingScreen()) this._voiceError.set("O áudio da transmissão parou. A tela continua sendo transmitida.");
+        });
       } catch (e) {
-        console.warn("[VoiceService] Áudio do aplicativo indisponível, transmitindo sem áudio:", e);
-        this._voiceError.set("Não foi possível capturar o áudio do aplicativo. A tela será transmitida sem áudio.");
+        console.warn("[VoiceService] Áudio da transmissão indisponível, transmitindo sem áudio:", e);
+        this._voiceError.set("Não foi possível capturar o áudio. A tela será transmitida sem áudio.");
         this.appAudio?.stop();
         this.appAudio = null;
       }

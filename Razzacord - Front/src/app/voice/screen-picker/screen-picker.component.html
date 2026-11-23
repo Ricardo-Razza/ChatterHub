@@ -43,6 +43,7 @@
           [disabled]="!voiceService.supportsAppAudio"
           class="rounded-lg border border-ch-border bg-ch-bg-darker px-3 py-2 text-sm normal-case text-ch-text-primary outline-none focus:border-ch-brand">
           <option value="">Sem áudio</option>
+          <option *ngIf="voiceService.supportsSystemAudio" [value]="systemAudioValue">Áudio do PC (sem a chamada)</option>
           <option *ngFor="let app of voiceService.pickerApps()" [value]="app.pid">{{ app.title }}</option>
         </select>
       </label>
@@ -66,7 +67,10 @@
 
       <p class="text-xs text-ch-text-muted sm:col-span-3">
         <ng-container *ngIf="voiceService.supportsAppAudio; else noAppAudio">
-          Só o áudio do aplicativo escolhido é enviado. A call (Discord, Razzacord) e o restante do sistema não vão para a transmissão.
+          <ng-container *ngIf="audioPid() === systemAudioValue; else appAudioHint">
+            Todo o áudio do PC é enviado, menos o Razzacord: ninguém ouve as vozes da chamada pela transmissão.
+          </ng-container>
+          <ng-template #appAudioHint>Só o áudio do aplicativo escolhido é enviado. A chamada e o restante do sistema ficam de fora.</ng-template>
         </ng-container>
         <ng-template #noAppAudio>
           Este sistema não suporta captura de áudio por aplicativo (requer Windows 10 2004 ou superior). A tela será enviada sem áudio.

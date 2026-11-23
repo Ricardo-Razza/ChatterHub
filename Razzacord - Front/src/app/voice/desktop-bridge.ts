@@ -18,6 +18,8 @@ export interface ShareSelection {
   sourceId: string;
   /** PID cujo áudio será transmitido; null = transmitir sem áudio. */
   audioPid: number | null;
+  /** Transmite todo o áudio do PC menos o Razzacord (a chamada fica de fora). Tem prioridade sobre audioPid. */
+  systemAudio?: boolean;
 }
 
 export interface DesktopBridge {
@@ -25,12 +27,16 @@ export interface DesktopBridge {
   platform: string;
   /** Captura de áudio por aplicativo disponível (Windows 10 2004+). */
   supportsAppAudio: boolean;
+  /** Áudio do PC inteiro sem a chamada. Ausente em versões antigas do app desktop. */
+  supportsSystemAudio?: boolean;
   listShareSources(): Promise<ShareSource[]>;
   listAudioApps(): Promise<AudioApp[]>;
   /** Arma a próxima chamada de getDisplayMedia e inicia a captura de áudio do processo. */
   startShare(selection: ShareSelection): Promise<void>;
   stopShare(): Promise<void>;
   onAppAudio(cb: (pcm: ArrayBuffer) => void): () => void;
+  /** A captura de áudio terminou sozinha (processo encerrado, dispositivo removido...). */
+  onAppAudioEnded?(cb: () => void): () => void;
   /** Push-to-talk global (funciona com o jogo em foco). */
   setPushToTalk(key: string | null): Promise<boolean>;
   onPushToTalk(cb: (active: boolean) => void): () => void;

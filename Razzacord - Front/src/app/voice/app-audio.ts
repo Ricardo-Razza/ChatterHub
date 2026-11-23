@@ -10,7 +10,10 @@ export class AppAudioCapture {
   private destination?: MediaStreamAudioDestinationNode;
   private unsubscribe?: () => void;
 
-  async start(ctx: AudioContext, bridge: DesktopBridge): Promise<MediaStreamTrack> {
+  private unsubscribeEnded?: () => void;
+
+  async start(ctx: AudioContext, bridge: DesktopBridge, onEnded?: () => void): Promise<MediaStreamTrack> {
+    if (onEnded) this.unsubscribeEnded = bridge.onAppAudioEnded?.(onEnded);
     await loadWorklet(ctx, 'razzacord-pcm-player', PCM_PLAYER_WORKLET_SOURCE);
     this.node = new AudioWorkletNode(ctx, 'razzacord-pcm-player', {
       numberOfInputs: 0,
@@ -29,6 +32,8 @@ export class AppAudioCapture {
   stop(): void {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
+    this.unsubscribeEnded?.();
+    this.unsubscribeEnded = undefined;
     try { this.node?.disconnect(); } catch (_) {}
     this.destination?.stream.getTracks().forEach((t) => t.stop());
     this.node = undefined;

@@ -1,14 +1,17 @@
 /**
  * Captura de áudio por aplicativo (WASAPI process loopback, Windows 10 2004+).
  *
- * Usa os executáveis do pacote `application-loopback` (derivados do exemplo oficial da Microsoft em
- * Windows-classic-samples/ApplicationLoopback): ApplicationLoopback.exe <PID> escreve PCM s16le,
- * 48 kHz, estéreo no stdout capturando só a árvore de processos do PID, e ProcessList.exe lista
- * "pid;hwnd;título" das janelas visíveis. Assim o áudio da call (Discord, Razzacord) nunca entra na transmissão.
+ * A captura usa native/SystemLoopback.exe (compilado por native/build.js):
+ *   "<PID> include" grava só a árvore de processos do PID (áudio de um aplicativo);
+ *   "<PID> exclude" grava todo o áudio do PC menos essa árvore. Com o PID do Razzacord,
+ *   as vozes da chamada nunca entram na transmissão (como no Discord).
+ * Saída: PCM s16le, 48 kHz, estéreo no stdout. O ProcessList.exe do pacote `application-loopback`
+ * lista "pid;hwnd;título" das janelas visíveis.
  */
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 
 const FRAME_BYTES = 4; // 2 canais * 16 bits
 
@@ -28,11 +31,19 @@ function exe(name) {
   return dir ? path.join(dir, `${process.platform}-${process.arch}`, name) : null;
 }
 
+function captureExe() {
+  // Dentro do instalador o executável fica fora do .asar (asarUnpack no package.json).
+  const file = path
+    .join(__dirname, 'native', 'bin', 'SystemLoopback.exe')
+    .replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
+  return fs.existsSync(file) ? file : null;
+}
+
 function isSupported() {
   if (process.platform !== 'win32' || process.arch !== 'x64') return false;
   // Process loopback exige o build 19041 (Windows 10 2004) ou superior.
   const build = Number(os.release().split('.')[2]);
-  return Number.isFinite(build) && build >= 19041 && !!exe('ApplicationLoopback.exe');
+  return Number.isFinite(build) && build >= 19041 && !!captureExe();
 }
 
 function listWindows() {
@@ -75,15 +86,20 @@ function stop() {
   }
 }
 
-function start(pid, { onData, onEnd }) {
+/**
+ * @param {number} pid processo alvo
+ * @param {'include'|'exclude'} mode include = só esse aplicativo; exclude = todo o PC menos ele
+ */
+function start(pid, mode, { onData, onEnd }) {
   stop();
-  const bin = exe('ApplicationLoopback.exe');
+  const bin = captureExe();
   if (!isSupported() || !bin) {
     onEnd();
     return;
   }
-  // O executável espera por uma tecla no stdin para encerrar: o stdin precisa ficar aberto (com 'ignore' ele sai na hora).
-  const child = spawn(bin, [String(pid)], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
+  // O executável encerra quando o stdin fecha: ele precisa ficar aberto enquanto a captura dura.
+  const args = [String(pid), mode === 'exclude' ? 'exclude' : 'include'];
+  const child = spawn(bin, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
   child.stdin.on('error', () => {});
   const current = { child, stopped: false };
   capture = current;
